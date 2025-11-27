@@ -1,6 +1,6 @@
-# Fluid Platformer
+# BoomerangQuest
 
-A fluid, fast-paced 2D platformer combining the smooth movement of Ori, classic Castlevania platforming, and retro Mega Man 8-bit aesthetics.
+A fluid, fast-paced 2D platformer combining the smooth movement of Ori, classic Castlevania platforming, and retro Mega Man 8-bit aesthetics. Wield your boomerang to defeat enemies in this action-packed adventure!
 
 ## Features
 
@@ -11,9 +11,13 @@ A fluid, fast-paced 2D platformer combining the smooth movement of Ori, classic 
 - **Dash ability** with cooldown and trail effects
 - **Variable jump height** based on button hold duration
 
-### Combat System
-- Fast-paced melee attacks with visual feedback
-- Attack hitboxes with screen shake and hit stop effects
+### Boomerang Combat System
+- **Click and hold** to charge your boomerang throw
+- **Release** to throw at cursor position
+- Boomerang flies out and **returns to you automatically**
+- **Fully charged throws** deal double damage and travel further
+- Visual charge indicator with particles and glowing effects
+- Boomerang can hit multiple enemies on its path
 - Enemy AI with patrol, chase, and attack states
 - Health system with invincibility frames
 
@@ -40,9 +44,18 @@ A fluid, fast-paced 2D platformer combining the smooth movement of Ori, classic 
 ## Controls
 
 - **Arrow Keys / WASD**: Move left/right
-- **Space / W / Up Arrow**: Jump (press again in air for double jump)
-- **X / J**: Attack
+- **W / Space / Up Arrow**: Jump (press again in air for double jump)
+- **Left Mouse Button**: Hold to charge, release to throw boomerang
 - **Z / K / Shift**: Dash
+
+## Boomerang Mechanics
+
+- **Quick Throw**: Click and release quickly for a standard boomerang throw
+- **Charged Throw**: Hold for 1 second to fully charge - deals 2x damage and travels 60% further
+- **Smart Tracking**: Boomerang automatically returns to you after reaching max distance
+- **Multi-Hit**: Can damage multiple enemies during flight and return
+- **Visual Feedback**: Charge ring appears around player, turns yellow when fully charged
+- **Cooldown System**: Longer cooldown for charged throws
 
 ## Running the Game
 
@@ -51,7 +64,7 @@ npm install
 npm run dev
 ```
 
-Then open your browser to `http://localhost:3000`
+Then open your browser to `http://localhost:3001` (or the port shown in your terminal)
 
 ## Tech Stack
 

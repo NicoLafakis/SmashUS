@@ -4,6 +4,7 @@ import SpriteRenderer from '../engine/SpriteRenderer'
 import ParticleSystem from '../engine/ParticleSystem'
 import Player from '../entities/Player'
 import Enemy from '../entities/Enemy'
+import Boomerang from '../entities/Boomerang'
 import LevelGenerator from '../world/LevelGenerator'
 
 const CANVAS_WIDTH = 1280
@@ -31,6 +32,8 @@ function Game() {
     // Generate sprites
     spriteRenderer.generateSprite('player', 32, ['#4ecdc4', '#ff6b6b', '#ffe66d'])
     spriteRenderer.generateSprite('enemy', 24, ['#ff6b6b', '#fff', '#333'])
+    spriteRenderer.generateSprite('boomerang', 16, ['#4ecdc4', '#45b7af', '#3ca19a'])
+    spriteRenderer.generateSprite('boomerang-charged', 24, ['#ffff00', '#ffd700', '#ffaa00'])
 
     // Generate level
     const { platforms, spawnPoints } = levelGen.generate()
@@ -43,14 +46,19 @@ function Game() {
       new Enemy(spawn.x, spawn.y, 'walker')
     )
 
+    // Boomerangs array
+    const boomerangs = []
+
     // Input state
     const input = {
       left: false,
       right: false,
       jump: false,
       jumpPressed: false,
-      attack: false,
-      dash: false
+      dash: false,
+      mouseX: 0,
+      mouseY: 0,
+      mouseDown: false
     }
 
     // Camera
@@ -83,7 +91,6 @@ function Game() {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') input.left = true
       if (e.code === 'ArrowRight' || e.code === 'KeyD') input.right = true
       if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') input.jump = true
-      if (e.code === 'KeyX' || e.code === 'KeyJ') input.attack = true
       if (e.code === 'KeyZ' || e.code === 'KeyK' || e.code === 'ShiftLeft') input.dash = true
     }
 
@@ -91,17 +98,58 @@ function Game() {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') input.left = false
       if (e.code === 'ArrowRight' || e.code === 'KeyD') input.right = false
       if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') input.jump = false
-      if (e.code === 'KeyX' || e.code === 'KeyJ') input.attack = false
       if (e.code === 'KeyZ' || e.code === 'KeyK' || e.code === 'ShiftLeft') input.dash = false
+    }
+
+    // Mouse events
+    const handleMouseDown = (e) => {
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      input.mouseX = (e.clientX - rect.left) * scaleX
+      input.mouseY = (e.clientY - rect.top) * scaleY
+      input.mouseDown = true
+      state.player.startCharging()
+    }
+
+    const handleMouseUp = (e) => {
+      input.mouseDown = false
+      const state = gameStateRef.current
+      if (!state) return
+
+      const throwData = state.player.releaseThrow(input.mouseX, input.mouseY, state.camera.x, state.camera.y)
+      if (throwData) {
+        const boomerang = new Boomerang(
+          throwData.x,
+          throwData.y,
+          throwData.targetX,
+          throwData.targetY,
+          state.player,
+          throwData.charged
+        )
+        state.boomerangs.push(boomerang)
+      }
+    }
+
+    const handleMouseMove = (e) => {
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      input.mouseX = (e.clientX - rect.left) * scaleX
+      input.mouseY = (e.clientY - rect.top) * scaleY
     }
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    canvas.addEventListener('mousedown', handleMouseDown)
+    canvas.addEventListener('mouseup', handleMouseUp)
+    canvas.addEventListener('mousemove', handleMouseMove)
 
     // Game state
     gameStateRef.current = {
       player,
       enemies,
+      boomerangs,
       platforms,
       particles,
       camera,
@@ -137,30 +185,49 @@ function Game() {
       // Update player
       state.player.update(deltaTime, input, state.platforms)
 
+      // Update boomerangs
+      state.boomerangs = state.boomerangs.filter(boomerang => {
+        const stillActive = boomerang.update(deltaTime)
+
+        // Check collision with enemies
+        if (stillActive) {
+          const boomerangBounds = boomerang.getBounds()
+
+          state.enemies.forEach(enemy => {
+            if (enemy.alive) {
+              const enemyBounds = enemy.getBounds()
+
+              if (boomerangBounds.x < enemyBounds.x + enemyBounds.width &&
+                  boomerangBounds.x + boomerangBounds.width > enemyBounds.x &&
+                  boomerangBounds.y < enemyBounds.y + enemyBounds.height &&
+                  boomerangBounds.y + boomerangBounds.height > enemyBounds.y) {
+
+                // Only damage if we haven't hit this enemy yet
+                if (boomerang.hitEnemy(enemy)) {
+                  if (enemy.takeDamage(boomerang.damage)) {
+                    state.score += 100
+                    setScore(state.score)
+                    state.particles.emitDeath(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2)
+                    state.audio.playHit()
+                    state.effects.hitStop = 0.05
+                    state.camera.shake = 0.3
+                  } else {
+                    state.particles.emitHit(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2)
+                    state.camera.shake = 0.2
+                  }
+                }
+              }
+            }
+          })
+        }
+
+        return stillActive
+      })
+
       // Update enemies
       state.enemies.forEach(enemy => {
         if (enemy.alive) {
           enemy.update(deltaTime, state.player, state.platforms)
-
-          // Check player attack collision
-          const attackBox = state.player.getAttackBox()
-          if (attackBox) {
-            const enemyBounds = enemy.getBounds()
-            if (attackBox.x < enemyBounds.x + enemyBounds.width &&
-                attackBox.x + attackBox.width > enemyBounds.x &&
-                attackBox.y < enemyBounds.y + enemyBounds.height &&
-                attackBox.y + attackBox.height > enemyBounds.y) {
-
-              if (enemy.takeDamage(1)) {
-                state.score += 100
-                setScore(state.score)
-                state.particles.emitDeath(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2)
-                state.audio.playHit()
-                state.effects.hitStop = 0.05
-                state.camera.shake = 0.3
-              }
-            }
-          }
 
           // Check enemy collision with player
           if (!state.player.invincible) {
@@ -236,6 +303,9 @@ function Game() {
       running = false
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      canvas.removeEventListener('mousedown', handleMouseDown)
+      canvas.removeEventListener('mouseup', handleMouseUp)
+      canvas.removeEventListener('mousemove', handleMouseMove)
     }
   }, [])
 
@@ -275,6 +345,11 @@ function Game() {
     // Draw enemies
     state.enemies.forEach(enemy => {
       enemy.render(ctx, state.spriteRenderer)
+    })
+
+    // Draw boomerangs
+    state.boomerangs.forEach(boomerang => {
+      boomerang.render(ctx, state.spriteRenderer)
     })
 
     // Draw player
@@ -319,16 +394,63 @@ function Game() {
     // Controls hint
     ctx.font = '14px "Courier New"'
     ctx.fillStyle = '#888'
-    ctx.fillText('ARROWS/WASD: Move | SPACE: Jump | X: Attack | Z: Dash', 20, CANVAS_HEIGHT - 20)
+    ctx.fillText('ARROWS/WASD: Move | W/SPACE: Jump | MOUSE: Throw (Hold for Power) | Z: Dash', 20, CANVAS_HEIGHT - 20)
 
-    // Ability cooldowns
-    const dashCooldown = Math.max(0, state.player.dashCooldown)
-    if (dashCooldown > 0) {
+    // Throw cooldown bar
+    const throwCooldown = Math.max(0, state.player.throwCooldown)
+    ctx.fillStyle = '#fff'
+    ctx.font = '12px "Courier New"'
+    ctx.fillText('THROW', 20, 115)
+
+    if (throwCooldown > 0) {
       ctx.fillStyle = '#4ecdc4'
-      ctx.fillRect(20, 120, 100 * (1 - dashCooldown / 0.5), 10)
-      ctx.strokeStyle = '#fff'
-      ctx.strokeRect(20, 120, 100, 10)
+      const maxCooldown = state.player.isFullyCharged() ? 0.8 : 0.5
+      ctx.fillRect(20, 120, 120 * (1 - throwCooldown / maxCooldown), 8)
+    } else {
+      ctx.fillStyle = '#4ecdc4'
+      ctx.fillRect(20, 120, 120, 8)
     }
+    ctx.strokeStyle = '#fff'
+    ctx.strokeRect(20, 120, 120, 8)
+
+    // Charge meter (when charging)
+    if (state.player.charging) {
+      const chargePercent = state.player.getChargePercent()
+      ctx.fillStyle = '#fff'
+      ctx.font = '12px "Courier New"'
+      ctx.fillText('CHARGE', 20, 145)
+
+      ctx.fillStyle = chargePercent >= 1 ? '#ffff00' : '#4ecdc4'
+      ctx.fillRect(20, 150, 120 * chargePercent, 8)
+
+      ctx.strokeStyle = chargePercent >= 1 ? '#ffff00' : '#fff'
+      ctx.lineWidth = chargePercent >= 1 ? 2 : 1
+      ctx.strokeRect(20, 150, 120, 8)
+
+      if (chargePercent >= 1) {
+        ctx.fillStyle = '#ffff00'
+        ctx.font = 'bold 14px "Courier New"'
+        ctx.fillText('FULLY CHARGED!', 150, 158)
+      }
+    }
+
+    // Dash cooldown bar
+    const dashCooldown = Math.max(0, state.player.dashCooldown)
+    const dashY = state.player.charging ? 175 : 145
+    ctx.fillStyle = '#fff'
+    ctx.font = '12px "Courier New"'
+    ctx.fillText('DASH', 20, dashY)
+
+    if (dashCooldown > 0) {
+      ctx.fillStyle = '#45b7af'
+      ctx.fillRect(20, dashY + 5, 120 * (1 - dashCooldown / 0.5), 8)
+    } else {
+      ctx.fillStyle = '#45b7af'
+      ctx.fillRect(20, dashY + 5, 120, 8)
+    }
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 1
+    ctx.strokeRect(20, dashY + 5, 120, 8)
   }
 
   const handleRestart = () => {

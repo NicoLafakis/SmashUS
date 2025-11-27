@@ -18,6 +18,10 @@ class SpriteRenderer {
       this.drawEnemySprite(ctx, size, colors)
     } else if (type === 'particle') {
       this.drawParticleSprite(ctx, size, colors)
+    } else if (type === 'boomerang') {
+      this.drawBoomerangSprite(ctx, size, colors)
+    } else if (type === 'boomerang-charged') {
+      this.drawBoomerangChargedSprite(ctx, size, colors)
     }
 
     this.sprites.set(type, canvas)
@@ -85,6 +89,74 @@ class SpriteRenderer {
   drawParticleSprite(ctx, size, colors) {
     ctx.fillStyle = colors[0]
     ctx.fillRect(0, 0, size, size)
+  }
+
+  drawBoomerangSprite(ctx, size, colors) {
+    const pixelSize = size / 16
+    // Boomerang pattern - angular V shape
+    const pattern = [
+      [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,1,1,2,2,1,0],
+      [0,0,0,0,0,0,0,0,1,1,2,2,2,1,0,0],
+      [0,0,0,0,0,0,1,1,2,2,2,1,0,0,0,0],
+      [0,0,0,0,1,1,2,2,2,1,0,0,0,0,0,0],
+      [0,0,1,1,2,2,2,1,0,0,0,0,0,0,0,0],
+      [1,1,2,2,2,1,0,0,0,0,0,0,0,0,0,0],
+      [1,2,2,1,0,0,0,0,0,0,1,2,2,1,0,0],
+      [1,2,1,0,0,0,0,0,0,0,0,1,2,2,1,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,1],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ]
+
+    pattern.forEach((row, y) => {
+      row.forEach((pixel, x) => {
+        if (pixel > 0) {
+          ctx.fillStyle = colors[pixel - 1]
+          ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize)
+        }
+      })
+    })
+  }
+
+  drawBoomerangChargedSprite(ctx, size, colors) {
+    const pixelSize = size / 20
+    // Larger, more elaborate charged boomerang
+    const pattern = [
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,1,1,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,2,2,1,1,0],
+      [0,0,0,0,0,0,0,0,0,0,0,3,3,2,2,2,2,1,0,0],
+      [0,0,0,0,0,0,0,0,0,3,3,2,2,2,2,2,1,0,0,0],
+      [0,0,0,0,0,0,0,3,3,2,2,2,2,2,1,0,0,0,0,0],
+      [0,0,0,0,0,3,3,2,2,2,2,2,1,0,0,0,0,0,0,0],
+      [0,0,0,3,3,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0],
+      [0,3,3,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0],
+      [3,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [2,2,2,2,1,0,0,0,0,0,0,0,0,3,3,2,2,2,1,0],
+      [2,2,2,1,0,0,0,0,0,0,0,0,0,0,3,2,2,2,2,1],
+      [2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,2,2],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,2],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    ]
+
+    pattern.forEach((row, y) => {
+      row.forEach((pixel, x) => {
+        if (pixel > 0) {
+          ctx.fillStyle = colors[pixel - 1]
+          ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize)
+        }
+      })
+    })
   }
 
   getSprite(type) {

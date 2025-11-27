@@ -24,12 +24,14 @@ class Player {
     this.canDoubleJump = true
     this.facing = 1
 
+    // Boomerang throwing
+    this.charging = false
+    this.chargeTime = 0
+    this.maxChargeTime = 1.0
+    this.throwCooldown = 0
+    this.canThrow = true
+
     // Combat
-    this.attacking = false
-    this.attackTimer = 0
-    this.attackDuration = 0.3
-    this.attackCooldown = 0
-    this.attackRange = 40
     this.health = 3
     this.maxHealth = 3
     this.invincible = false
@@ -61,8 +63,7 @@ class Player {
     const prevY = this.y
 
     // Update timers
-    if (this.attackTimer > 0) this.attackTimer -= deltaTime
-    if (this.attackCooldown > 0) this.attackCooldown -= deltaTime
+    if (this.throwCooldown > 0) this.throwCooldown -= deltaTime
     if (this.dashCooldown > 0) this.dashCooldown -= deltaTime
     if (this.invincibleTimer > 0) this.invincibleTimer -= deltaTime
     else this.invincible = false
@@ -79,7 +80,7 @@ class Player {
     }
 
     // Movement input
-    if (!this.dashing && !this.attacking) {
+    if (!this.dashing) {
       if (input.left) {
         this.vx -= this.acceleration
         this.facing = -1
@@ -99,16 +100,14 @@ class Player {
       }
     }
 
-    // Attack
-    if (input.attack && this.attackCooldown <= 0 && !this.attacking) {
-      this.attacking = true
-      this.attackTimer = this.attackDuration
-      this.attackCooldown = 0.4
-      this.audio.playAttack()
-    }
-
-    if (this.attackTimer <= 0) {
-      this.attacking = false
+    // Update facing based on mouse position
+    if (input.mouseX !== undefined) {
+      const playerScreenX = this.x + this.width / 2
+      if (input.mouseX > playerScreenX) {
+        this.facing = 1
+      } else if (input.mouseX < playerScreenX) {
+        this.facing = -1
+      }
     }
 
     // Apply friction
@@ -230,6 +229,9 @@ class Player {
       }
     }
 
+    // Update charge
+    this.updateCharge(deltaTime)
+
     // Update animation
     this.animTimer += deltaTime
     if (this.animTimer >= this.animSpeed) {
@@ -265,15 +267,72 @@ class Player {
     return false
   }
 
-  getAttackBox() {
-    if (!this.attacking) return null
-
-    return {
-      x: this.x + (this.facing > 0 ? this.width : -this.attackRange),
-      y: this.y,
-      width: this.attackRange,
-      height: this.height
+  startCharging() {
+    if (this.throwCooldown <= 0) {
+      this.charging = true
+      this.chargeTime = 0
     }
+  }
+
+  updateCharge(deltaTime) {
+    if (this.charging) {
+      this.chargeTime += deltaTime
+      this.chargeTime = Math.min(this.chargeTime, this.maxChargeTime)
+
+      // Emit charge particles
+      if (Math.random() > 0.7) {
+        const angle = Math.random() * Math.PI * 2
+        const dist = 15 + Math.random() * 10
+        const px = this.x + this.width / 2 + Math.cos(angle) * dist
+        const py = this.y + this.height / 2 + Math.sin(angle) * dist
+        this.particles.emit(px, py, 1, {
+          colors: this.isFullyCharged() ? ['#ffff00', '#ffd700'] : ['#4ecdc4', '#45b7af'],
+          speedMin: 0.5,
+          speedMax: 2,
+          angleMin: 0,
+          angleMax: Math.PI * 2,
+          life: 0.3,
+          sizeMin: 2,
+          sizeMax: 4
+        })
+      }
+    }
+  }
+
+  releaseThrow(mouseX, mouseY, cameraX, cameraY) {
+    if (!this.charging) return null
+
+    this.charging = false
+    const charged = this.isFullyCharged()
+
+    this.throwCooldown = charged ? 0.8 : 0.5
+
+    // Return throw data
+    const throwData = {
+      x: this.x + this.width / 2,
+      y: this.y + this.height / 2,
+      targetX: mouseX + cameraX,
+      targetY: mouseY + cameraY,
+      charged: charged
+    }
+
+    this.chargeTime = 0
+    this.audio.playAttack()
+
+    return throwData
+  }
+
+  cancelCharge() {
+    this.charging = false
+    this.chargeTime = 0
+  }
+
+  isFullyCharged() {
+    return this.chargeTime >= this.maxChargeTime
+  }
+
+  getChargePercent() {
+    return this.chargeTime / this.maxChargeTime
   }
 
   render(ctx, spriteRenderer) {
@@ -293,12 +352,35 @@ class Player {
       })
     }
 
+    // Render charging effect
+    if (this.charging) {
+      const chargePercent = this.getChargePercent()
+      const radius = 20 + chargePercent * 15
+
+      ctx.save()
+      ctx.globalAlpha = 0.3 + chargePercent * 0.3
+      ctx.strokeStyle = this.isFullyCharged() ? '#ffff00' : '#4ecdc4'
+      ctx.lineWidth = 2 + chargePercent * 3
+      ctx.beginPath()
+      ctx.arc(this.x + this.width / 2, this.y + this.height / 2, radius, 0, Math.PI * 2)
+      ctx.stroke()
+
+      // Inner ring when fully charged
+      if (this.isFullyCharged()) {
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, radius - 5, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+
+      ctx.restore()
+    }
+
     // Render player with invincibility flashing
     const shouldRender = !this.invincible || Math.floor(this.invincibleTimer * 20) % 2 === 0
 
     if (shouldRender) {
-      const rotation = this.attacking ? Math.sin(this.attackTimer * 30) * 0.2 : 0
-
       spriteRenderer.drawSprite(
         ctx,
         'player',
@@ -307,26 +389,8 @@ class Player {
         1,
         1,
         this.facing < 0,
-        rotation
+        0
       )
-    }
-
-    // Render attack hitbox (debug/visual effect)
-    if (this.attacking) {
-      const attackBox = this.getAttackBox()
-      ctx.fillStyle = 'rgba(255, 200, 100, 0.3)'
-      ctx.fillRect(attackBox.x, attackBox.y, attackBox.width, attackBox.height)
-
-      // Attack slash effect
-      ctx.strokeStyle = '#ffcc00'
-      ctx.lineWidth = 3
-      ctx.globalAlpha = 1 - (this.attackTimer / this.attackDuration)
-      ctx.beginPath()
-      const slashX = this.x + this.width / 2 + this.facing * 25
-      const slashY = this.y + this.height / 2
-      ctx.arc(slashX, slashY, 20, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.globalAlpha = 1
     }
   }
 }
