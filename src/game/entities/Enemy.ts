@@ -57,6 +57,15 @@ export const ENEMY_CONFIGS: Record<string, EnemyConfig> = {
     scoreValue: 250,
     attackRange: 250,
     attackCooldown: 3
+  },
+  camera_drone: {
+    type: 'camera_drone',
+    health: 15,
+    speed: 80,
+    damage: 8,
+    scoreValue: 100,
+    attackRange: 350,
+    attackCooldown: 1.2
   }
 }
 
@@ -178,6 +187,28 @@ export class Enemy extends Entity {
           this.attackTimer = this.config.attackCooldown!
         }
         break
+
+      case 'camera_drone':
+        // Floats and circles around, shooting at player
+        if (this.stateTimer <= 0) {
+          this.stateTimer = 2 + Math.random() * 2
+          // Pick a random orbit direction
+          this.fleeDirection = Math.random() * Math.PI * 2
+        }
+        // Hover behavior - float in circular pattern
+        const orbitAngle = this.fleeDirection + this.stateTimer * 0.5
+        const targetDist = 200 + Math.sin(this.stateTimer * 2) * 50
+        const targetX = player.x + Math.cos(orbitAngle) * targetDist
+        const targetY = player.y + Math.sin(orbitAngle) * targetDist
+        this.moveToward(targetX, targetY, this.config.speed, dt)
+
+        // Always try to shoot when in range
+        if (dist <= this.config.attackRange! && this.attackTimer <= 0) {
+          this.wantsToShoot = true
+          this.aimAngle = angle
+          this.attackTimer = this.config.attackCooldown!
+        }
+        break
     }
 
     // Face player
@@ -226,6 +257,8 @@ export class Enemy extends Entity {
         return 'enemy_pistol'
       case 'lobbyist':
         return 'enemy_pistol' // Money projectile could be added
+      case 'camera_drone':
+        return 'drone_shot'
       default:
         return 'enemy_pistol'
     }
@@ -241,6 +274,8 @@ export class Enemy extends Entity {
         return 400
       case 'lobbyist':
         return 250
+      case 'camera_drone':
+        return 320
       default:
         return 300
     }
