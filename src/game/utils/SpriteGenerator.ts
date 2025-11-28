@@ -598,17 +598,6 @@ export class SpriteGenerator {
         ctx.strokeRect(2, 2, 12, 12)
         break
 
-      case 'audit_beam':
-        canvas.width = 32
-        canvas.height = 8
-        ctx.fillStyle = '#FF0000'
-        ctx.fillRect(0, 0, 32, 8)
-        ctx.fillStyle = '#FFFF00'
-        ctx.fillRect(0, 2, 32, 4)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 3, 32, 2)
-        break
-
       case 'enemy_pistol':
         canvas.width = 8
         canvas.height = 8
@@ -619,6 +608,183 @@ export class SpriteGenerator {
         ctx.fillStyle = '#FF8888'
         ctx.beginPath()
         ctx.arc(3, 3, 1, 0, Math.PI * 2)
+        ctx.fill()
+        break
+
+      // Boss projectile types
+      case 'audit_beam':
+        canvas.width = 200
+        canvas.height = 12
+        const auditGradient = ctx.createLinearGradient(0, 0, 200, 0)
+        auditGradient.addColorStop(0, 'rgba(255,0,0,0)')
+        auditGradient.addColorStop(0.1, '#FF0000')
+        auditGradient.addColorStop(0.5, '#FFFF00')
+        auditGradient.addColorStop(0.9, '#FF0000')
+        auditGradient.addColorStop(1, 'rgba(255,0,0,0)')
+        ctx.fillStyle = auditGradient
+        ctx.fillRect(0, 0, 200, 12)
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 4, 200, 4)
+        break
+
+      case 'paper_storm':
+        canvas.width = 16
+        canvas.height = 16
+        // Spinning paper
+        ctx.fillStyle = '#FFFFFF'
+        ctx.save()
+        ctx.translate(8, 8)
+        ctx.rotate(Math.PI / 4)
+        ctx.fillRect(-6, -8, 12, 16)
+        ctx.restore()
+        ctx.fillStyle = '#AAAAAA'
+        ctx.fillRect(4, 4, 8, 1)
+        ctx.fillRect(4, 7, 6, 1)
+        ctx.fillRect(4, 10, 8, 1)
+        break
+
+      case 'legislation':
+        canvas.width = 18
+        canvas.height = 18
+        // Rolled up bill/scroll
+        ctx.fillStyle = '#F5DEB3'
+        ctx.fillRect(2, 4, 14, 10)
+        ctx.fillStyle = '#DEB887'
+        ctx.beginPath()
+        ctx.arc(2, 9, 5, Math.PI / 2, -Math.PI / 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(16, 9, 5, -Math.PI / 2, Math.PI / 2)
+        ctx.fill()
+        ctx.fillStyle = '#333333'
+        ctx.fillRect(4, 6, 10, 1)
+        ctx.fillRect(4, 9, 8, 1)
+        ctx.fillRect(4, 12, 10, 1)
+        break
+
+      case 'gavel_shockwave':
+        canvas.width = 32
+        canvas.height = 32
+        ctx.strokeStyle = '#8B4513'
+        ctx.lineWidth = 4
+        ctx.beginPath()
+        ctx.arc(16, 16, 12, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.strokeStyle = '#A0522D'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(16, 16, 8, 0, Math.PI * 2)
+        ctx.stroke()
+        break
+
+      case 'tie_breaker_beam':
+        canvas.width = 250
+        canvas.height = 16
+        const tieGradient = ctx.createLinearGradient(0, 0, 250, 0)
+        tieGradient.addColorStop(0, 'rgba(0,0,255,0)')
+        tieGradient.addColorStop(0.1, '#0000FF')
+        tieGradient.addColorStop(0.5, '#00FFFF')
+        tieGradient.addColorStop(0.9, '#0000FF')
+        tieGradient.addColorStop(1, 'rgba(0,0,255,0)')
+        ctx.fillStyle = tieGradient
+        ctx.fillRect(0, 0, 250, 16)
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 6, 250, 4)
+        break
+
+      case 'debate_pulse':
+        canvas.width = 48
+        canvas.height = 48
+        ctx.fillStyle = 'rgba(128, 0, 128, 0.5)'
+        ctx.beginPath()
+        ctx.arc(24, 24, 22, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = '#FF00FF'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(24, 24, 20, 0, Math.PI * 2)
+        ctx.stroke()
+        break
+
+      case 'executive_order':
+        canvas.width = 64
+        canvas.height = 64
+        // Danger zone indicator
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
+        ctx.fillRect(0, 0, 64, 64)
+        ctx.strokeStyle = '#FF0000'
+        ctx.lineWidth = 3
+        ctx.setLineDash([8, 4])
+        ctx.strokeRect(2, 2, 60, 60)
+        ctx.fillStyle = '#FF0000'
+        ctx.font = 'bold 12px Arial'
+        ctx.fillText('!', 28, 38)
+        break
+
+      case 'veto_barrier':
+        canvas.width = 48
+        canvas.height = 64
+        // Reflective shield
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
+        ctx.beginPath()
+        ctx.moveTo(24, 0)
+        ctx.lineTo(48, 16)
+        ctx.lineTo(48, 48)
+        ctx.lineTo(24, 64)
+        ctx.lineTo(0, 48)
+        ctx.lineTo(0, 16)
+        ctx.closePath()
+        ctx.fill()
+        ctx.strokeStyle = '#FFD700'
+        ctx.lineWidth = 3
+        ctx.stroke()
+        ctx.fillStyle = '#FFFFFF'
+        ctx.font = 'bold 16px Arial'
+        ctx.fillText('V', 18, 38)
+        break
+
+      case 'drone_shot':
+        canvas.width = 10
+        canvas.height = 10
+        ctx.fillStyle = '#FF00FF'
+        ctx.beginPath()
+        ctx.arc(5, 5, 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#FFFFFF'
+        ctx.beginPath()
+        ctx.arc(4, 4, 1, 0, Math.PI * 2)
+        ctx.fill()
+        break
+
+      case 'airstrike_reticle':
+        canvas.width = 48
+        canvas.height = 48
+        ctx.strokeStyle = '#FF0000'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(24, 24, 20, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(24, 24, 12, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(24, 0)
+        ctx.lineTo(24, 48)
+        ctx.moveTo(0, 24)
+        ctx.lineTo(48, 24)
+        ctx.stroke()
+        break
+
+      case 'secret_service_shot':
+        canvas.width = 10
+        canvas.height = 10
+        ctx.fillStyle = '#333333'
+        ctx.beginPath()
+        ctx.arc(5, 5, 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#666666'
+        ctx.beginPath()
+        ctx.arc(4, 4, 2, 0, Math.PI * 2)
         ctx.fill()
         break
 

@@ -3,16 +3,27 @@ import { Entity } from '../entities/Entity'
 import { Player } from '../entities/Player'
 import { GAME_WIDTH, GAME_HEIGHT } from '../Game'
 import { angleBetween, distance } from '../utils/Collision'
-import { EnemyConfig } from '../entities/Enemy'
+// EnemyConfig type not directly used but available for reference
 
 /**
  * Boss state machine states
  */
 export enum BossState {
   IDLE = 'idle',
+  WINDING_UP = 'winding_up',
   ATTACKING = 'attacking',
   RECOVERING = 'recovering',
   TRANSITIONING = 'transitioning', // Phase transition state
+}
+
+/**
+ * Attack state for tracking individual attack progress
+ */
+export enum AttackState {
+  IDLE = 'idle',
+  WINDING_UP = 'winding_up',
+  ACTIVE = 'active',
+  RECOVERING = 'recovering',
 }
 
 /**
@@ -34,10 +45,13 @@ export enum BossPhase {
  */
 export interface BossAttack {
   name: string
+  windUpTime: number // Delay before attack fires (gives player warning)
   duration: number // How long the attack lasts
   cooldown: number // Recovery time after attack
   minPhase: BossPhase // Minimum phase required to use this attack
-  execute: (boss: Boss, player: Player, dt: number) => void
+  visualTell?: string // Animation/indicator type for wind-up
+  onWindUp?: (boss: Boss, player: Player) => void // Called when wind-up starts
+  execute: (boss: Boss, player: Player, dt: number, attackTime: number) => void
 }
 
 /**
@@ -108,8 +122,10 @@ export abstract class Boss extends Entity {
   // Attack management
   protected currentAttack: BossAttack | null = null
   protected attackTimer: number = 0
+  protected windUpTimer: number = 0
   protected recoveryTimer: number = 0
   protected attackIndex: number = -1
+  protected attackElapsedTime: number = 0 // Time since attack started (for attack logic)
 
   // Spawn requests (consumed by GameScene each frame)
   public projectileRequests: BossProjectileRequest[] = []
@@ -174,6 +190,9 @@ export abstract class Boss extends Entity {
     switch (this.state) {
       case BossState.IDLE:
         this.updateIdleState(dt, player)
+        break
+      case BossState.WINDING_UP:
+        this.updateWindingUpState(dt, player)
         break
       case BossState.ATTACKING:
         this.updateAttackingState(dt, player)
@@ -248,6 +267,34 @@ export abstract class Boss extends Entity {
   }
 
   /**
+   * Winding up state - visual tell before attack
+   */
+  protected updateWindingUpState(dt: number, _player: Player): void {
+    if (!this.currentAttack) {
+      this.state = BossState.IDLE
+      this.stateTimer = this.idleDuration
+      return
+    }
+
+    this.windUpTimer -= dt
+
+    // Flash to indicate wind-up
+    if (Math.floor(this.windUpTimer * 10) % 2 === 0) {
+      this.sprite.tint = 0xffff88
+    } else {
+      this.sprite.tint = 0xffffff
+    }
+
+    if (this.windUpTimer <= 0) {
+      // Wind-up finished, start actual attack
+      this.state = BossState.ATTACKING
+      this.attackTimer = this.currentAttack.duration
+      this.attackElapsedTime = 0
+      this.sprite.tint = 0xffffff
+    }
+  }
+
+  /**
    * Attacking state - execute current attack
    */
   protected updateAttackingState(dt: number, player: Player): void {
@@ -258,9 +305,10 @@ export abstract class Boss extends Entity {
     }
 
     this.attackTimer -= dt
+    this.attackElapsedTime += dt
 
-    // Execute attack logic
-    this.currentAttack.execute(this, player, dt)
+    // Execute attack logic with elapsed time for animation
+    this.currentAttack.execute(this, player, dt, this.attackElapsedTime)
 
     if (this.attackTimer <= 0) {
       // Attack finished, enter recovery
@@ -316,8 +364,20 @@ export abstract class Boss extends Entity {
     this.currentAttack = this.selectAttack(availableAttacks, player)
 
     if (this.currentAttack) {
-      this.state = BossState.ATTACKING
-      this.attackTimer = this.currentAttack.duration
+      // Call wind-up callback if present
+      if (this.currentAttack.onWindUp) {
+        this.currentAttack.onWindUp(this, player)
+      }
+
+      // Start with wind-up if attack has wind-up time
+      if (this.currentAttack.windUpTime > 0) {
+        this.state = BossState.WINDING_UP
+        this.windUpTimer = this.currentAttack.windUpTime
+      } else {
+        this.state = BossState.ATTACKING
+        this.attackTimer = this.currentAttack.duration
+        this.attackElapsedTime = 0
+      }
     } else {
       this.stateTimer = this.idleDuration
     }
@@ -343,7 +403,7 @@ export abstract class Boss extends Entity {
   /**
    * Default movement behavior - override in subclasses
    */
-  protected updateMovement(dt: number, player: Player): void {
+  protected updateMovement(dt: number, _player: Player): void {
     // Default: slowly move toward center of arena
     this.moveToward(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.config.speed * 0.5, dt)
   }

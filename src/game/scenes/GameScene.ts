@@ -3,7 +3,7 @@ import { Scene } from './Scene'
 import { Game, GAME_WIDTH, GAME_HEIGHT } from '../Game'
 import { Player } from '../entities/Player'
 import { Projectile, ProjectileConfig } from '../entities/Projectile'
-import { Enemy } from '../entities/Enemy'
+import { Enemy, ENEMY_CONFIGS } from '../entities/Enemy'
 import { Pickup } from '../entities/Pickup'
 import { HUD } from '../ui/HUD'
 import { Room, generateRoomConfig } from '../levels/Room'
@@ -13,10 +13,17 @@ import { Shotgun } from '../weapons/Shotgun'
 import { RapidFire } from '../weapons/RapidFire'
 import { Laser } from '../weapons/Laser'
 import { SpreadShot } from '../weapons/SpreadShot'
+import { Boss } from '../bosses/Boss'
+import { IRSCommissioner } from '../bosses/IRSCommissioner'
+import { SenatorPair } from '../bosses/SenatorPair'
+import { Speaker } from '../bosses/Speaker'
+import { VicePresident } from '../bosses/VicePresident'
+import { President } from '../bosses/President'
 
 const CONTACT_DAMAGE = 10
 const ROOM_CLEAR_BONUS = 500
 const NO_DAMAGE_BONUS = 1000
+const BOSS_CLEAR_BONUS = 2000
 const DROP_CHANCE = 0.35 // 35% chance to drop a pickup
 
 export class GameScene extends Scene {
@@ -25,6 +32,15 @@ export class GameScene extends Scene {
   private pickups: Pickup[] = []
   private hud!: HUD
   private room!: Room
+
+  // Boss tracking
+  private currentBoss: Boss | null = null
+  private isBossRoom: boolean = false
+
+  // Boss health bar UI
+  private bossHealthBarBg!: PIXI.Graphics
+  private bossHealthBar!: PIXI.Graphics
+  private bossNameText!: PIXI.Text
 
   private currentLevel: number = 1
   private currentRoom: number = 1
@@ -83,8 +99,85 @@ export class GameScene extends Scene {
     this.roomClearedText.visible = false
     this.uiLayer.addChild(this.roomClearedText)
 
+    // Boss health bar (hidden initially)
+    this.createBossHealthBar()
+
     // Start first room
     this.startRoom()
+  }
+
+  private createBossHealthBar(): void {
+    const barWidth = 400
+    const barHeight = 24
+    const barX = (GAME_WIDTH - barWidth) / 2
+    const barY = 30
+
+    // Background
+    this.bossHealthBarBg = new PIXI.Graphics()
+    this.bossHealthBarBg.beginFill(0x333333)
+    this.bossHealthBarBg.drawRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4)
+    this.bossHealthBarBg.endFill()
+    this.bossHealthBarBg.beginFill(0x111111)
+    this.bossHealthBarBg.drawRect(barX, barY, barWidth, barHeight)
+    this.bossHealthBarBg.endFill()
+    this.bossHealthBarBg.visible = false
+    this.uiLayer.addChild(this.bossHealthBarBg)
+
+    // Health fill
+    this.bossHealthBar = new PIXI.Graphics()
+    this.bossHealthBar.visible = false
+    this.uiLayer.addChild(this.bossHealthBar)
+
+    // Boss name
+    this.bossNameText = new PIXI.Text('', {
+      fontFamily: 'Arial',
+      fontSize: 16,
+      fontWeight: 'bold',
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2
+    })
+    this.bossNameText.anchor.set(0.5, 1)
+    this.bossNameText.x = GAME_WIDTH / 2
+    this.bossNameText.y = barY - 4
+    this.bossNameText.visible = false
+    this.uiLayer.addChild(this.bossNameText)
+  }
+
+  private updateBossHealthBar(): void {
+    if (!this.currentBoss || !this.currentBoss.active) {
+      this.bossHealthBarBg.visible = false
+      this.bossHealthBar.visible = false
+      this.bossNameText.visible = false
+      return
+    }
+
+    const barWidth = 400
+    const barHeight = 24
+    const barX = (GAME_WIDTH - barWidth) / 2
+    const barY = 30
+
+    const healthPercent = this.currentBoss.getHealthPercent()
+
+    // Show health bar
+    this.bossHealthBarBg.visible = true
+    this.bossHealthBar.visible = true
+    this.bossNameText.visible = true
+
+    // Update health fill
+    this.bossHealthBar.clear()
+
+    // Color based on health
+    let color = 0xff0000 // Red
+    if (healthPercent > 0.5) color = 0x00ff00 // Green
+    else if (healthPercent > 0.25) color = 0xffff00 // Yellow
+
+    this.bossHealthBar.beginFill(color)
+    this.bossHealthBar.drawRect(barX, barY, barWidth * healthPercent, barHeight)
+    this.bossHealthBar.endFill()
+
+    // Update name
+    this.bossNameText.text = this.currentBoss.getName()
   }
 
   private drawBackground(): void {
@@ -117,6 +210,21 @@ export class GameScene extends Scene {
     this.tookDamageThisRoom = false
     this.roomClearedText.visible = false
 
+    // Clear old boss
+    if (this.currentBoss) {
+      if (this.currentBoss.sprite.parent) {
+        this.currentBoss.sprite.parent.removeChild(this.currentBoss.sprite)
+      }
+      // Handle SenatorPair's second senator sprite
+      if (this.currentBoss instanceof SenatorPair) {
+        const secondSprite = (this.currentBoss as SenatorPair).getSecondSenatorSprite()
+        if (secondSprite.parent) {
+          secondSprite.parent.removeChild(secondSprite)
+        }
+      }
+      this.currentBoss = null
+    }
+
     // Clear old enemies and pickups
     for (const enemy of this.room?.enemies || []) {
       if (enemy.sprite.parent) {
@@ -141,11 +249,51 @@ export class GameScene extends Scene {
     // Create new room
     const config = generateRoomConfig(this.currentLevel, this.currentRoom)
     this.room = new Room(config)
+    this.isBossRoom = config.isBoss || false
+
+    // Spawn boss if boss room
+    if (this.isBossRoom && config.bossType) {
+      this.spawnBoss(config.bossType)
+    }
+
     this.room.start()
 
-    // Position player at center
+    // Position player at center (or bottom for boss rooms)
     this.player.x = GAME_WIDTH / 2
-    this.player.y = GAME_HEIGHT / 2
+    this.player.y = this.isBossRoom ? GAME_HEIGHT * 0.75 : GAME_HEIGHT / 2
+  }
+
+  private spawnBoss(bossType: string): void {
+    const spawnX = GAME_WIDTH / 2
+    const spawnY = GAME_HEIGHT * 0.3
+
+    switch (bossType) {
+      case 'irs_commissioner':
+        this.currentBoss = new IRSCommissioner(spawnX, spawnY)
+        break
+      case 'senator_pair':
+      case 'senator_pair_2':
+        this.currentBoss = new SenatorPair(spawnX * 0.5, spawnY)
+        // Add second senator sprite
+        this.entityLayer.addChild((this.currentBoss as SenatorPair).getSecondSenatorSprite())
+        break
+      case 'speaker':
+        this.currentBoss = new Speaker(spawnX, spawnY)
+        break
+      case 'vice_president':
+        this.currentBoss = new VicePresident(spawnX, spawnY)
+        break
+      case 'president':
+        this.currentBoss = new President(spawnX, spawnY)
+        break
+      default:
+        console.warn(`Unknown boss type: ${bossType}`)
+        return
+    }
+
+    if (this.currentBoss) {
+      this.entityLayer.addChild(this.currentBoss.sprite)
+    }
   }
 
   update(dt: number): void {
@@ -175,8 +323,26 @@ export class GameScene extends Scene {
       this.fireWeapon(angle)
     }
 
-    // Update room (spawn waves)
-    this.room.update(dt)
+    // Update room (spawn waves for non-boss rooms)
+    if (!this.isBossRoom) {
+      this.room.update(dt)
+    }
+
+    // Update boss
+    if (this.currentBoss && this.currentBoss.active) {
+      this.currentBoss.update(dt)
+      this.currentBoss.updateAI(dt, this.player)
+
+      // Process boss projectile requests
+      for (const req of this.currentBoss.projectileRequests) {
+        this.spawnBossProjectile(req.x, req.y, req.angle, req.speed, req.damage, req.type)
+      }
+
+      // Process boss minion requests
+      for (const req of this.currentBoss.minionRequests) {
+        this.spawnBossMinion(req.type, req.x, req.y)
+      }
+    }
 
     // Add new enemies to scene
     for (const enemy of this.room.enemies) {
@@ -216,13 +382,52 @@ export class GameScene extends Scene {
     // Clean up inactive entities
     this.cleanup()
 
-    // Check room cleared
-    if (this.room.cleared && !this.isTransitioning) {
+    // Check room cleared (including boss defeat)
+    if (this.checkRoomCleared() && !this.isTransitioning) {
       this.onRoomCleared()
     }
 
     // Update HUD
     this.hud.update(this.player, this.currentLevel, this.currentRoom)
+
+    // Update boss health bar
+    this.updateBossHealthBar()
+  }
+
+  private checkRoomCleared(): boolean {
+    if (this.isBossRoom) {
+      // Boss room cleared when boss is defeated
+      return this.currentBoss !== null && !this.currentBoss.active
+    } else {
+      // Normal room cleared by Room logic
+      return this.room.cleared
+    }
+  }
+
+  private spawnBossProjectile(x: number, y: number, angle: number, speed: number, damage: number, type: string): void {
+    const config: ProjectileConfig = {
+      damage,
+      speed,
+      piercing: false,
+      type,
+      isPlayerProjectile: false
+    }
+
+    const proj = new Projectile(config, x, y, angle)
+    this.projectiles.push(proj)
+    this.projectileLayer.addChild(proj.sprite)
+  }
+
+  private spawnBossMinion(type: string, x: number, y: number): void {
+    const config = ENEMY_CONFIGS[type]
+    if (!config) {
+      console.warn(`Unknown enemy type: ${type}`)
+      return
+    }
+
+    const enemy = new Enemy(config, x, y)
+    this.room.enemies.push(enemy)
+    this.entityLayer.addChild(enemy.sprite)
   }
 
   private fireWeapon(baseAngle: number): void {
@@ -290,6 +495,58 @@ export class GameScene extends Scene {
       }
     }
 
+    // Player projectiles vs boss
+    if (this.currentBoss && this.currentBoss.active) {
+      const bossBounds = this.currentBoss.getBounds()
+
+      for (const proj of this.projectiles) {
+        if (!proj.active || !proj.isPlayerProjectile) continue
+        if (proj.hasHit(this.currentBoss.id)) continue
+
+        // Don't damage if boss is invulnerable
+        if (this.currentBoss.isInvulnerable()) continue
+
+        const projBounds = proj.getBounds()
+
+        if (aabbIntersects(projBounds, bossBounds)) {
+          proj.markHit(this.currentBoss.id)
+          const killed = this.currentBoss.takeDamage(proj.damage)
+
+          if (killed) {
+            this.player.addScore(this.currentBoss.config.scoreValue)
+            // Boss drops guaranteed pickup
+            this.trySpawnPickup(this.currentBoss.x, this.currentBoss.y)
+            this.trySpawnPickup(this.currentBoss.x + 30, this.currentBoss.y)
+            this.trySpawnPickup(this.currentBoss.x - 30, this.currentBoss.y)
+          }
+        }
+      }
+
+      // Handle SenatorPair's second senator collision
+      if (this.currentBoss instanceof SenatorPair) {
+        const senatorPair = this.currentBoss as SenatorPair
+        const secondBounds = {
+          x: senatorPair.secondSenator.x - 32,
+          y: senatorPair.secondSenator.y - 32,
+          width: 64,
+          height: 64
+        }
+
+        for (const proj of this.projectiles) {
+          if (!proj.active || !proj.isPlayerProjectile) continue
+          if (!senatorPair.canSecondSenatorTakeDamage()) continue
+
+          const projBounds = proj.getBounds()
+
+          if (aabbIntersects(projBounds, secondBounds)) {
+            proj.markHit(this.currentBoss.id + 1000) // Unique ID for second senator
+            // Damage goes to shared health pool
+            senatorPair.takeDamage(proj.damage)
+          }
+        }
+      }
+    }
+
     // Enemy projectiles vs player
     for (const proj of this.projectiles) {
       if (!proj.active || proj.isPlayerProjectile) continue
@@ -321,6 +578,42 @@ export class GameScene extends Scene {
         if (died) {
           this.onPlayerDeath()
           return
+        }
+      }
+    }
+
+    // Player vs boss (contact damage)
+    if (this.currentBoss && this.currentBoss.active) {
+      const bossBounds = this.currentBoss.getBounds()
+
+      if (aabbIntersects(playerBounds, bossBounds)) {
+        const died = this.player.takeDamage(this.currentBoss.config.contactDamage)
+        this.tookDamageThisRoom = true
+
+        if (died) {
+          this.onPlayerDeath()
+          return
+        }
+      }
+
+      // Check SenatorPair's second senator contact damage
+      if (this.currentBoss instanceof SenatorPair) {
+        const senatorPair = this.currentBoss as SenatorPair
+        const secondBounds = {
+          x: senatorPair.secondSenator.x - 32,
+          y: senatorPair.secondSenator.y - 32,
+          width: 64,
+          height: 64
+        }
+
+        if (aabbIntersects(playerBounds, secondBounds)) {
+          const died = this.player.takeDamage(this.currentBoss.config.contactDamage)
+          this.tookDamageThisRoom = true
+
+          if (died) {
+            this.onPlayerDeath()
+            return
+          }
         }
       }
     }
@@ -427,21 +720,30 @@ export class GameScene extends Scene {
       this.player.addScore(NO_DAMAGE_BONUS)
     }
 
+    // Extra bonus for boss defeat
+    if (this.isBossRoom) {
+      this.player.addScore(BOSS_CLEAR_BONUS)
+    }
+
     // Show room cleared message
     this.roomClearedText.visible = true
     this.isTransitioning = true
-    this.roomTransitionTimer = 2
+    this.roomTransitionTimer = this.isBossRoom ? 3 : 2 // Longer pause after boss
 
-    // Check for level complete
-    if (this.currentRoom >= this.maxRoomsPerLevel[this.currentLevel]) {
-      // Check for game complete
+    // Update message based on what was defeated
+    if (this.isBossRoom) {
       if (this.currentLevel >= 5) {
-        this.roomClearedText.text = 'VICTORY!'
+        this.roomClearedText.text = 'VICTORY!\nYou Defeated President Maxwell!'
         this.roomClearedText.style.fill = '#ffff00'
-        // After transition, go to game over with win state
       } else {
-        this.roomClearedText.text = `LEVEL ${this.currentLevel} COMPLETE!`
+        this.roomClearedText.text = `BOSS DEFEATED!\nLevel ${this.currentLevel} Complete!`
+        this.roomClearedText.style.fill = '#ff8800'
       }
+    } else if (this.currentRoom >= this.maxRoomsPerLevel[this.currentLevel]) {
+      this.roomClearedText.text = `LEVEL ${this.currentLevel} COMPLETE!`
+    } else {
+      this.roomClearedText.text = 'ROOM CLEARED!'
+      this.roomClearedText.style.fill = '#44ff44'
     }
   }
 
@@ -477,6 +779,17 @@ export class GameScene extends Scene {
     this.hud.destroy()
     if (this.room) {
       this.room.destroy()
+    }
+    if (this.currentBoss) {
+      if (this.currentBoss.sprite.parent) {
+        this.currentBoss.sprite.parent.removeChild(this.currentBoss.sprite)
+      }
+      if (this.currentBoss instanceof SenatorPair) {
+        const secondSprite = (this.currentBoss as SenatorPair).getSecondSenatorSprite()
+        if (secondSprite.parent) {
+          secondSprite.parent.removeChild(secondSprite)
+        }
+      }
     }
     super.destroy()
   }
