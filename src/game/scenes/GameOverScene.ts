@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js'
 import { Scene } from './Scene'
 import { Game, GAME_WIDTH, GAME_HEIGHT } from '../Game'
+import { playSound } from '../systems/AudioManager'
 
 export class GameOverScene extends Scene {
   private restartPrompt!: PIXI.Text
@@ -66,6 +67,7 @@ export class GameOverScene extends Scene {
     // Check for click to restart
     const input = this.game.input.getState()
     if (input.fireJustPressed) {
+      playSound('menu_select')
       this.game.sceneManager.switchTo('game')
     }
   }

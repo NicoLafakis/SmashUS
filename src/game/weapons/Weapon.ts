@@ -19,6 +19,13 @@ export abstract class Weapon {
     this.stats = stats
   }
 
+  /**
+   * Get the weapon name for display and effects
+   */
+  get name(): string {
+    return this.stats.name
+  }
+
   update(dt: number): void {
     if (this.cooldown > 0) {
       this.cooldown -= dt

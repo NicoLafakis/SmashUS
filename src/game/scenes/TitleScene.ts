@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js'
 import { Scene } from './Scene'
 import { Game, GAME_WIDTH, GAME_HEIGHT } from '../Game'
+import { getAudioManager, playSound } from '../systems/AudioManager'
 
 export class TitleScene extends Scene {
   private startPrompt!: PIXI.Text
@@ -82,6 +83,9 @@ export class TitleScene extends Scene {
     // Check for click to start
     const input = this.game.input.getState()
     if (input.fireJustPressed) {
+      // Resume audio context and play sound
+      getAudioManager().resume()
+      playSound('menu_select')
       this.game.sceneManager.switchTo('game')
     }
   }

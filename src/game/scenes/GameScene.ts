@@ -28,6 +28,23 @@ import {
   Explosion,
   ReflectiveBarrier
 } from '../bosses/attacks'
+import {
+  initCamera,
+  cameraShake,
+  cameraFlash,
+  Camera
+} from '../systems/Camera'
+import {
+  initParticleSystem,
+  emitParticles,
+  emitParticlesDirectional,
+  ParticleSystem
+} from '../systems/ParticleSystem'
+import {
+  getAudioManager,
+  playSound,
+  playNoise
+} from '../systems/AudioManager'
 
 const CONTACT_DAMAGE = 10
 const ROOM_CLEAR_BONUS = 500
@@ -68,6 +85,10 @@ export class GameScene extends Scene {
 
   private roomClearedText!: PIXI.Text
 
+  // Effects systems
+  private camera!: Camera
+  private particleSystem!: ParticleSystem
+
   constructor(game: Game) {
     super(game)
   }
@@ -85,6 +106,13 @@ export class GameScene extends Scene {
     this.container.addChild(this.entityLayer)
     this.container.addChild(this.projectileLayer)
     this.container.addChild(this.uiLayer)
+
+    // Initialize effects systems
+    this.camera = initCamera(this.container)
+    this.particleSystem = initParticleSystem(this.projectileLayer)
+
+    // Resume audio context on user interaction
+    getAudioManager().resume()
 
     // Draw background
     this.drawBackground()
@@ -421,6 +449,11 @@ export class GameScene extends Scene {
 
     // Update boss health bar
     this.updateBossHealthBar()
+
+    // Update effects systems
+    this.camera.update(dt)
+    this.particleSystem.update(dt)
+    this.camera.renderFlash(this.uiLayer)
   }
 
   private checkRoomCleared(): boolean {
@@ -619,6 +652,26 @@ export class GameScene extends Scene {
       this.player.spreadMultiplier
     )
 
+    // Determine sound based on weapon type
+    const weaponName = this.player.weapon.name.toLowerCase()
+    if (weaponName.includes('laser')) {
+      playSound('shoot_laser')
+    } else if (weaponName.includes('shotgun')) {
+      playSound('shoot_shotgun')
+    } else {
+      playSound('shoot')
+    }
+
+    // Muzzle flash particles
+    const muzzleOffsetX = Math.cos(baseAngle) * 20
+    const muzzleOffsetY = Math.sin(baseAngle) * 20
+    emitParticlesDirectional(
+      this.player.x + muzzleOffsetX,
+      this.player.y + muzzleOffsetY,
+      baseAngle,
+      'muzzle_flash'
+    )
+
     for (let i = 0; i < angles.length; i++) {
       const config = projectileConfigs[i % projectileConfigs.length]
       config.damage = Math.floor(config.damage * this.player.damageMultiplier)
@@ -667,9 +720,18 @@ export class GameScene extends Scene {
           proj.markHit(enemy.id)
           const killed = enemy.takeDamage(proj.damage)
 
+          // Hit effects
+          emitParticles(proj.x, proj.y, 'hit_spark')
+          playSound('enemy_hit')
+
           if (killed) {
             this.player.addScore(enemy.config.scoreValue)
             this.trySpawnPickup(enemy.x, enemy.y)
+
+            // Death effects
+            emitParticles(enemy.x, enemy.y, 'enemy_death')
+            playSound('enemy_death')
+            cameraShake(4, 0.15)
           }
         }
       }
@@ -692,12 +754,25 @@ export class GameScene extends Scene {
           proj.markHit(this.currentBoss.id)
           const killed = this.currentBoss.takeDamage(proj.damage)
 
+          // Boss hit effects
+          emitParticles(proj.x, proj.y, 'hit_spark')
+          playSound('boss_hit')
+
           if (killed) {
             this.player.addScore(this.currentBoss.config.scoreValue)
             // Boss drops guaranteed pickup
             this.trySpawnPickup(this.currentBoss.x, this.currentBoss.y)
             this.trySpawnPickup(this.currentBoss.x + 30, this.currentBoss.y)
             this.trySpawnPickup(this.currentBoss.x - 30, this.currentBoss.y)
+
+            // Boss death effects - big explosion!
+            emitParticles(this.currentBoss.x, this.currentBoss.y, 'boss_death')
+            emitParticles(this.currentBoss.x - 40, this.currentBoss.y - 20, 'explosion')
+            emitParticles(this.currentBoss.x + 40, this.currentBoss.y + 20, 'explosion')
+            playSound('boss_death')
+            playNoise(0.4, 0.5)
+            cameraShake(20, 0.5)
+            cameraFlash(0xffffff, 0.3, 0.6)
           }
         }
       }
@@ -738,6 +813,9 @@ export class GameScene extends Scene {
         const died = this.player.takeDamage(proj.damage)
         this.tookDamageThisRoom = true
 
+        // Player hurt effects
+        this.triggerPlayerHurtEffects()
+
         if (died) {
           this.onPlayerDeath()
           return
@@ -755,6 +833,9 @@ export class GameScene extends Scene {
         const died = this.player.takeDamage(CONTACT_DAMAGE)
         this.tookDamageThisRoom = true
 
+        // Player hurt effects
+        this.triggerPlayerHurtEffects()
+
         if (died) {
           this.onPlayerDeath()
           return
@@ -769,6 +850,9 @@ export class GameScene extends Scene {
       if (aabbIntersects(playerBounds, bossBounds)) {
         const died = this.player.takeDamage(this.currentBoss.config.contactDamage)
         this.tookDamageThisRoom = true
+
+        // Player hurt effects
+        this.triggerPlayerHurtEffects()
 
         if (died) {
           this.onPlayerDeath()
@@ -860,12 +944,34 @@ export class GameScene extends Scene {
   private collectPickup(pickup: Pickup): void {
     pickup.active = false
 
+    // Determine pickup category for effects
+    const isWeapon = pickup.pickupType.startsWith('weapon_')
+    const isHealth = pickup.pickupType === 'health'
+    const isPowerup = pickup.pickupType === 'damage_boost' || pickup.pickupType === 'spread_boost' || pickup.pickupType === 'shield'
+
+    // Play appropriate sound and particles
+    if (isWeapon) {
+      playSound('pickup_weapon')
+      emitParticles(pickup.x, pickup.y, 'pickup_weapon')
+    } else if (isHealth) {
+      playSound('pickup_health')
+      emitParticles(pickup.x, pickup.y, 'pickup_health')
+    } else if (isPowerup) {
+      playSound('pickup_powerup')
+      emitParticles(pickup.x, pickup.y, 'pickup_powerup')
+    } else {
+      playSound('pickup')
+      emitParticles(pickup.x, pickup.y, 'pickup')
+    }
+
     switch (pickup.pickupType) {
       case 'tax_refund_small':
         this.player.addScore(pickup.config.value || 100)
+        emitParticles(pickup.x, pickup.y, 'money')
         break
       case 'tax_refund_large':
         this.player.addScore(pickup.config.value || 500)
+        emitParticles(pickup.x, pickup.y, 'money')
         break
       case 'health':
         this.player.heal(pickup.config.value || 25)
@@ -881,6 +987,7 @@ export class GameScene extends Scene {
         break
       case 'extra_life':
         this.player.addLife()
+        cameraFlash(0x00ff00, 0.2, 0.3)
         break
       case 'weapon_pistol':
         this.player.setWeapon(new Pistol())
@@ -955,6 +1062,20 @@ export class GameScene extends Scene {
       this.player.addScore(BOSS_CLEAR_BONUS)
     }
 
+    // Room clear effects
+    if (this.isBossRoom) {
+      playSound('level_complete')
+      // Celebration particles across the screen
+      for (let i = 0; i < 5; i++) {
+        const x = 200 + Math.random() * (GAME_WIDTH - 400)
+        const y = 150 + Math.random() * (GAME_HEIGHT - 300)
+        emitParticles(x, y, 'room_clear')
+      }
+    } else {
+      playSound('room_clear')
+      emitParticles(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'room_clear')
+    }
+
     // Show room cleared message
     this.roomClearedText.visible = true
     this.isTransitioning = true
@@ -965,9 +1086,11 @@ export class GameScene extends Scene {
       if (this.currentLevel >= 5) {
         this.roomClearedText.text = 'VICTORY!\nYou Defeated President Maxwell!'
         this.roomClearedText.style.fill = '#ffff00'
+        cameraFlash(0xffff00, 0.5, 0.4)
       } else {
         this.roomClearedText.text = `BOSS DEFEATED!\nLevel ${this.currentLevel} Complete!`
         this.roomClearedText.style.fill = '#ff8800'
+        cameraFlash(0xff8800, 0.3, 0.3)
       }
     } else if (this.currentRoom >= this.maxRoomsPerLevel[this.currentLevel]) {
       this.roomClearedText.text = `LEVEL ${this.currentLevel} COMPLETE!`
@@ -995,7 +1118,31 @@ export class GameScene extends Scene {
     this.startRoom()
   }
 
+  private triggerPlayerHurtEffects(): void {
+    // Only trigger if player isn't invincible (prevents spam during i-frames)
+    if (!this.player.invincible) {
+      if (this.player.shield > 0) {
+        // Shield absorbed the hit
+        playSound('shield_hit')
+        emitParticles(this.player.x, this.player.y, 'shield_hit')
+        cameraShake(4, 0.15)
+      } else {
+        // Took real damage
+        playSound('player_hurt')
+        emitParticles(this.player.x, this.player.y, 'player_hurt')
+        cameraShake(8, 0.2)
+        cameraFlash(0xff0000, 0.15, 0.3)
+      }
+    }
+  }
+
   private onPlayerDeath(): void {
+    // Death effects
+    playSound('player_death')
+    emitParticles(this.player.x, this.player.y, 'explosion')
+    cameraShake(15, 0.4)
+    cameraFlash(0xff0000, 0.3, 0.5)
+
     if (this.player.lives <= 0) {
       this.game.sceneManager.switchTo('gameover', { score: this.player.score })
     } else {
@@ -1029,6 +1176,14 @@ export class GameScene extends Scene {
       hazard.destroy()
     }
     this.bossHazards = []
+
+    // Clean up effects systems
+    if (this.particleSystem) {
+      this.particleSystem.destroy()
+    }
+    if (this.camera) {
+      this.camera.destroy()
+    }
 
     super.destroy()
   }
