@@ -14,6 +14,7 @@ export class HUD {
   private powerupContainer: PIXI.Container
   private damageBoostBar: PIXI.Graphics
   private spreadBoostBar: PIXI.Graphics
+  private moneyText: PIXI.Text
 
   constructor() {
     this.container = new PIXI.Container()
@@ -67,6 +68,18 @@ export class HUD {
     this.livesText.x = GAME_WIDTH - 10
     this.livesText.y = 40
     this.container.addChild(this.livesText)
+
+    // Money (below lives)
+    this.moneyText = new PIXI.Text('$0', {
+      fontFamily: 'Arial',
+      fontSize: 18,
+      fontWeight: 'bold',
+      fill: '#ffcc00'
+    })
+    this.moneyText.anchor.set(1, 0)
+    this.moneyText.x = GAME_WIDTH - 10
+    this.moneyText.y = 65
+    this.container.addChild(this.moneyText)
 
     // Room indicator (top center)
     this.roomText = new PIXI.Text('Level 1 - Room 1', {
@@ -131,6 +144,9 @@ export class HUD {
 
     // Lives
     this.livesText.text = `Lives: ${player.lives}`
+
+    // Money
+    this.moneyText.text = `$${player.money}`
 
     // Room
     this.roomText.text = `Level ${level} - Room ${room}`

@@ -5,6 +5,7 @@ import { SceneManager } from './scenes/SceneManager'
 import { TitleScene } from './scenes/TitleScene'
 import { GameScene } from './scenes/GameScene'
 import { GameOverScene } from './scenes/GameOverScene'
+import { ShopScene } from './scenes/ShopScene'
 import { AssetLoader } from './utils/AssetLoader'
 
 export const GAME_WIDTH = 1280
@@ -47,6 +48,7 @@ export class Game {
     this.sceneManager.register('title', () => new TitleScene(this))
     this.sceneManager.register('game', () => new GameScene(this))
     this.sceneManager.register('gameover', () => new GameOverScene(this))
+    this.sceneManager.register('shop', () => new ShopScene(this))
   }
 
   private resizeCanvas(): void {

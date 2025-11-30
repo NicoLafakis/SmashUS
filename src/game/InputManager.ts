@@ -83,6 +83,10 @@ export class InputManager {
     }
   }
 
+  isKeyDown(code: string): boolean {
+    return this.keys.has(code.toLowerCase())
+  }
+
   isKeyPressed(code: string): boolean {
     return this.keys.has(code.toLowerCase())
   }

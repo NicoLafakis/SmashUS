@@ -84,6 +84,7 @@ export class GameScene extends Scene {
   private roomTransitionTimer: number = 0
   private isTransitioning: boolean = false
   private tookDamageThisRoom: boolean = false
+  private bossJustDefeated: boolean = false // Flag to transition to shop
 
   private roomClearedText!: PIXI.Text
 
@@ -96,7 +97,18 @@ export class GameScene extends Scene {
     super(game)
   }
 
-  init(): void {
+  init(data?: Record<string, unknown>): void {
+    // Handle returning from shop
+    const fromShop = data?.fromShop === true
+    if (fromShop && typeof data?.level === 'number') {
+      this.currentLevel = data.level
+      this.currentRoom = typeof data?.room === 'number' ? data.room : 1
+    } else {
+      // Fresh game start
+      this.currentLevel = 1
+      this.currentRoom = 1
+    }
+
     // Create layer structure
     this.backgroundLayer = new PIXI.Container()
     this.hazardLayer = new PIXI.Container()
@@ -125,6 +137,9 @@ export class GameScene extends Scene {
 
     // Create player
     this.player = new Player()
+    // Apply upgrades from UpgradeManager (important when returning from shop)
+    this.player.applyUpgrades()
+    this.player.syncMoney()
     this.entityLayer.addChild(this.player.sprite)
 
     // Create HUD
@@ -956,10 +971,13 @@ export class GameScene extends Scene {
 
     switch (pickup.pickupType) {
       case 'tax_refund_small':
+        // Tax refunds give money (for shop) AND score
+        this.player.addMoney(pickup.config.value || 100)
         this.player.addScore(pickup.config.value || 100)
         emitParticles(pickup.x, pickup.y, 'money')
         break
       case 'tax_refund_large':
+        this.player.addMoney(pickup.config.value || 500)
         this.player.addScore(pickup.config.value || 500)
         emitParticles(pickup.x, pickup.y, 'money')
         break
@@ -1041,15 +1059,30 @@ export class GameScene extends Scene {
   }
 
   private onRoomCleared(): void {
-    // Add bonuses
+    // Add score bonuses
     this.player.addScore(ROOM_CLEAR_BONUS)
     if (!this.tookDamageThisRoom) {
       this.player.addScore(NO_DAMAGE_BONUS)
     }
 
+    // Money bonuses (for shop)
+    const baseMoneyBonus = 50 + (this.currentLevel * 25) // 75, 100, 125, 150, 175
+    this.player.addMoney(baseMoneyBonus)
+    if (!this.tookDamageThisRoom) {
+      this.player.addMoney(baseMoneyBonus) // Double for no damage
+    }
+
     // Extra bonus for boss defeat
     if (this.isBossRoom) {
       this.player.addScore(BOSS_CLEAR_BONUS)
+      // Big money bonus for boss (scales with level)
+      const bossMoneyBonus = 500 + (this.currentLevel * 200) // 700, 900, 1100, 1300, 1500
+      this.player.addMoney(bossMoneyBonus)
+
+      // Set flag for shop transition (unless final boss)
+      if (this.currentLevel < 5) {
+        this.bossJustDefeated = true
+      }
     }
 
     // Room clear effects
@@ -1078,7 +1111,7 @@ export class GameScene extends Scene {
         this.roomClearedText.style.fill = '#ffff00'
         cameraFlash(0xffff00, 0.5, 0.4)
       } else {
-        this.roomClearedText.text = `BOSS DEFEATED!\nLevel ${this.currentLevel} Complete!`
+        this.roomClearedText.text = `BOSS DEFEATED!\nVisit the Shop!`
         this.roomClearedText.style.fill = '#ff8800'
         cameraFlash(0xff8800, 0.3, 0.3)
       }
@@ -1091,10 +1124,26 @@ export class GameScene extends Scene {
   }
 
   private nextRoom(): void {
+    // Check if we should go to shop after boss
+    if (this.bossJustDefeated) {
+      this.bossJustDefeated = false
+
+      // Advance to next level
+      this.currentLevel++
+      this.currentRoom = 1
+
+      // Store level state for when we return from shop
+      const nextLevel = this.currentLevel
+
+      // Go to shop - will return to game after
+      this.game.sceneManager.switchTo('shop', { nextLevel })
+      return
+    }
+
     this.currentRoom++
 
     if (this.currentRoom > this.maxRoomsPerLevel[this.currentLevel]) {
-      // Next level
+      // Next level (shouldn't happen normally - boss triggers shop)
       this.currentLevel++
       this.currentRoom = 1
 
