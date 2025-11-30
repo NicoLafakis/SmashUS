@@ -288,8 +288,8 @@ const SPEAKER_CONFIG: BossConfig = {
   speed: 60, // Slower, behind podium
   contactDamage: 20,
   scoreValue: 7000,
-  width: 72,
-  height: 72,
+  width: 48,
+  height: 48,
   attacks: createAttacks()
 }
 

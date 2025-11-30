@@ -1,137 +1,242 @@
 import * as PIXI from 'pixi.js'
 
 /**
- * Procedural sprite generator - creates placeholder sprites when actual assets aren't available.
- * These are meant to be functional placeholders that clearly represent each entity type.
+ * Pixel Art Sprite Generator
+ *
+ * All sprites use a consistent pixel grid with a limited color palette.
+ * Base unit: 1 pixel = 1 canvas pixel (scaled up by PIXI)
+ *
+ * Standard sizes:
+ * - Regular entities: 32x32
+ * - Large enemies: 32x40
+ * - Bosses: 48x48 or 48x56
+ * - Projectiles: 8x8 to 16x16
+ * - Pickups: 16x16
  */
+
+// ============================================================================
+// COLOR PALETTE - 16 unified colors for consistent look
+// ============================================================================
+const PALETTE = {
+  // Skin tones
+  skin: '#FFCCAA',
+  skinDark: '#DDAA88',
+  skinShadow: '#BB8866',
+
+  // Hair colors
+  hairBrown: '#553322',
+  hairBlack: '#222222',
+  hairGray: '#888888',
+  hairWhite: '#CCCCCC',
+
+  // Clothing - Player
+  flannel: '#CC3333',
+  flannelDark: '#AA2222',
+  jeans: '#4466AA',
+  jeansDark: '#335588',
+
+  // Clothing - Enemies/Officials
+  suitNavy: '#223355',
+  suitNavyLight: '#334466',
+  suitBlack: '#1A1A1A',
+  suitGray: '#444444',
+  suitBrown: '#665544',
+
+  // Accents
+  shirtWhite: '#FFFFFF',
+  tieRed: '#CC0000',
+  tieBlue: '#2244AA',
+
+  // Objects
+  paper: '#EEEEEE',
+  paperLines: '#AAAAAA',
+  wood: '#885533',
+  woodDark: '#664422',
+  metal: '#666666',
+  metalDark: '#444444',
+  gold: '#FFCC00',
+
+  // Effects
+  black: '#000000',
+  shadow: '#00000066',
+
+  // Projectiles
+  bulletYellow: '#FFFF00',
+  bulletOrange: '#FF8800',
+  bulletRed: '#FF4444',
+  bulletCyan: '#00FFFF',
+  bulletGreen: '#44FF44',
+  bulletPurple: '#FF44FF',
+  laserPink: '#FF00FF',
+
+  // Pickups
+  healthRed: '#FF0000',
+  healthPink: '#FF8888',
+  moneyGreen: '#22AA22',
+  moneyLight: '#44CC44',
+  powerOrange: '#FF8800',
+  powerYellow: '#FFCC00',
+  shieldBlue: '#4488FF',
+  shieldLight: '#88BBFF',
+}
+
+// ============================================================================
+// PIXEL DRAWING HELPERS
+// ============================================================================
+
+/**
+ * Draw a single pixel (actually a 1x1 rectangle)
+ */
+function px(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+  ctx.fillStyle = color
+  ctx.fillRect(x, y, 1, 1)
+}
+
+/**
+ * Draw a rectangle of pixels
+ */
+function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string): void {
+  ctx.fillStyle = color
+  ctx.fillRect(x, y, w, h)
+}
+
+/**
+ * Draw multiple pixels from a pattern array
+ * Pattern is an array of strings where each character represents a color
+ */
+function drawPattern(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  pattern: string[],
+  colorMap: Record<string, string>
+): void {
+  for (let row = 0; row < pattern.length; row++) {
+    for (let col = 0; col < pattern[row].length; col++) {
+      const char = pattern[row][col]
+      if (char !== ' ' && char !== '.') {
+        const color = colorMap[char]
+        if (color) {
+          px(ctx, x + col, y + row, color)
+        }
+      }
+    }
+  }
+}
+
+// ============================================================================
+// SPRITE GENERATOR CLASS
+// ============================================================================
+
 export class SpriteGenerator {
   private static cache: Map<string, PIXI.Texture> = new Map()
 
-  /**
-   * Generate player sprite - John Q. Public
-   * Brown hair, red flannel shirt, white undershirt, jeans
-   */
+  // ==========================================================================
+  // PLAYER SPRITE - John Q. Public (32x32)
+  // ==========================================================================
   static generatePlayerSprite(): PIXI.Texture {
     const key = 'player'
     if (this.cache.has(key)) return this.cache.get(key)!
 
-    const size = 48
     const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
+    canvas.width = 32
+    canvas.height = 32
     const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
 
-    ctx.clearRect(0, 0, size, size)
+    // Color map for pattern
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairBrown,    // Hair
+      'S': PALETTE.skin,         // Skin
+      's': PALETTE.skinDark,     // Skin shadow
+      'E': PALETTE.black,        // Eyes
+      'M': PALETTE.skinShadow,   // Mouth
+      'R': PALETTE.flannel,      // Red flannel
+      'r': PALETTE.flannelDark,  // Flannel shadow
+      'W': PALETTE.shirtWhite,   // White undershirt
+      'J': PALETTE.jeans,        // Jeans
+      'j': PALETTE.jeansDark,    // Jeans shadow
+      'B': PALETTE.wood,         // Brown shoes
+    }
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.ellipse(24, 44, 12, 4, 0, 0, Math.PI * 2)
-    ctx.fill()
+    // 32x32 pixel art pattern
+    const pattern = [
+      '                                ',
+      '                                ',
+      '          HHHHHHHH              ',
+      '         HHHHHHHHHH             ',
+      '         HHsSSSSsHH             ',
+      '         HsSSSSSSsH             ',
+      '          SSSSSSSS              ',
+      '          SEESSEESS             ',
+      '          SSSSSSSS              ',
+      '          SSMMMSS               ',
+      '           SSSS                 ',
+      '          WWWWWW                ',
+      '         RRWWWWrRR              ',
+      '        RRRrWWrRRRR             ',
+      '        RRRrrrRRRRR             ',
+      '       sRRRRRRRRRRRs            ',
+      '       SRRRRRRRRRRRS            ',
+      '       SRRRRRRRRRRRs            ',
+      '        RRRRRRRRRR              ',
+      '        RRRRRRRRRR              ',
+      '         JJJJJJJJ               ',
+      '         JJJjjJJJ               ',
+      '         JJJjjJJJ               ',
+      '         JJJ  JJJ               ',
+      '         JJJ  JJJ               ',
+      '         JJj  jJJ               ',
+      '         BBB  BBB               ',
+      '         BBB  BBB               ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
 
-    // Jeans (legs)
-    ctx.fillStyle = '#4466AA'
-    ctx.fillRect(14, 32, 8, 12)
-    ctx.fillRect(26, 32, 8, 12)
-
-    // Shoes
-    ctx.fillStyle = '#5C4033'
-    ctx.fillRect(13, 42, 10, 4)
-    ctx.fillRect(25, 42, 10, 4)
-
-    // Red flannel body
-    ctx.fillStyle = '#CC3333'
-    ctx.fillRect(12, 18, 24, 16)
-
-    // Flannel pattern
-    ctx.fillStyle = '#992222'
-    ctx.fillRect(12, 20, 24, 2)
-    ctx.fillRect(12, 26, 24, 2)
-    ctx.fillRect(12, 32, 24, 2)
-    ctx.fillRect(16, 18, 2, 16)
-    ctx.fillRect(22, 18, 2, 16)
-    ctx.fillRect(28, 18, 2, 16)
-
-    // White undershirt V
-    ctx.fillStyle = '#FFFFFF'
-    ctx.beginPath()
-    ctx.moveTo(20, 18)
-    ctx.lineTo(24, 24)
-    ctx.lineTo(28, 18)
-    ctx.closePath()
-    ctx.fill()
-
-    // Arms
-    ctx.fillStyle = '#CC3333'
-    ctx.fillRect(6, 20, 6, 12)
-    ctx.fillRect(36, 20, 6, 12)
-
-    // Hands
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(6, 30, 6, 4)
-    ctx.fillRect(36, 30, 6, 4)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(16, 4, 16, 14)
-
-    // Brown hair
-    ctx.fillStyle = '#6B4423'
-    ctx.fillRect(14, 2, 20, 6)
-    ctx.fillRect(14, 2, 4, 10)
-    ctx.fillRect(30, 2, 4, 10)
-
-    // Eyes
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(19, 9, 3, 3)
-    ctx.fillRect(26, 9, 3, 3)
-
-    // Mouth
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(22, 14, 4, 2)
-
-    // Outline
-    ctx.strokeStyle = '#222222'
-    ctx.lineWidth = 1
-    ctx.strokeRect(12, 18, 24, 16)
-    ctx.strokeRect(16, 4, 16, 14)
+    drawPattern(ctx, 0, 0, pattern, colors)
 
     const texture = PIXI.Texture.from(canvas)
     this.cache.set(key, texture)
     return texture
   }
 
+  // ==========================================================================
+  // ENEMY SPRITES (32x32)
+  // ==========================================================================
   static generateEnemySprite(type: string): PIXI.Texture {
     const key = `enemy_${type}`
     if (this.cache.has(key)) return this.cache.get(key)!
 
     const canvas = document.createElement('canvas')
+    canvas.width = 32
+    canvas.height = 32
     const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
 
     switch (type) {
       case 'intern':
-        this.drawIntern(canvas, ctx)
+        this.drawIntern(ctx)
         break
       case 'bureaucrat':
-        this.drawBureaucrat(canvas, ctx)
+        this.drawBureaucrat(ctx)
         break
       case 'irs_agent':
-        this.drawIRSAgent(canvas, ctx)
+        this.drawIRSAgent(ctx)
         break
       case 'secret_service':
-        this.drawSecretService(canvas, ctx)
+        this.drawSecretService(ctx)
         break
       case 'lobbyist':
-        this.drawLobbyist(canvas, ctx)
+        this.drawLobbyist(ctx)
         break
       case 'camera_drone':
-        this.drawCameraDrone(canvas, ctx)
+        this.drawCameraDrone(ctx)
         break
       default:
-        canvas.width = 48
-        canvas.height = 48
-        ctx.fillStyle = '#FF0000'
-        ctx.fillRect(8, 8, 32, 32)
+        // Fallback - red square
+        rect(ctx, 8, 8, 16, 16, '#FF0000')
     }
 
     const texture = PIXI.Texture.from(canvas)
@@ -139,739 +244,808 @@ export class SpriteGenerator {
     return texture
   }
 
-  private static drawIntern(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 40
-    canvas.height = 48
-    ctx.clearRect(0, 0, 40, 48)
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.ellipse(20, 44, 10, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Running legs
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(10, 32, 6, 12)
-    ctx.fillRect(24, 32, 6, 12)
-
-    // Shoes
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(8, 42, 8, 4)
-    ctx.fillRect(24, 42, 8, 4)
-
-    // Gray suit body
-    ctx.fillStyle = '#555555'
-    ctx.fillRect(10, 18, 20, 16)
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(14, 18, 12, 10)
-
-    // Red tie
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(18, 18, 4, 14)
-
-    // Arms
-    ctx.fillStyle = '#555555'
-    ctx.fillRect(4, 18, 6, 10)
-    ctx.fillRect(30, 22, 6, 10)
-
-    // Hands
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(4, 26, 5, 4)
-    ctx.fillRect(30, 30, 5, 4)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(12, 4, 16, 14)
-
-    // Hair
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(12, 2, 16, 5)
-
-    // Eyes
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(15, 9, 3, 2)
-    ctx.fillRect(22, 9, 3, 2)
-
-    // Mouth
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(18, 13, 4, 2)
-
-    // Outline
-    ctx.strokeStyle = '#222222'
-    ctx.strokeRect(10, 18, 20, 16)
-  }
-
-  private static drawBureaucrat(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 56
-    canvas.height = 56
-    ctx.clearRect(0, 0, 56, 56)
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.ellipse(28, 52, 14, 4, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Legs
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(14, 38, 10, 14)
-    ctx.fillRect(32, 38, 10, 14)
-
-    // Shoes
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(12, 50, 12, 4)
-    ctx.fillRect(32, 50, 12, 4)
-
-    // Navy suit body
-    ctx.fillStyle = '#2A3A5A'
-    ctx.fillRect(10, 18, 36, 22)
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(20, 18, 16, 14)
-
-    // Tie
-    ctx.fillStyle = '#1A1A3A'
-    ctx.fillRect(26, 18, 4, 16)
-
-    // Arms with papers
-    ctx.fillStyle = '#2A3A5A'
-    ctx.fillRect(4, 22, 8, 14)
-    ctx.fillRect(44, 22, 8, 14)
-
-    // Papers
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(0, 24, 10, 12)
-    ctx.fillRect(46, 24, 10, 12)
-    ctx.fillStyle = '#AAAAAA'
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(1, 26 + i * 3, 8, 1)
-      ctx.fillRect(47, 26 + i * 3, 8, 1)
+  private static drawIntern(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairBlack,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'G': PALETTE.suitGray,
+      'g': '#333333',
+      'W': PALETTE.shirtWhite,
+      'T': PALETTE.tieRed,
+      'P': PALETTE.paper,
+      'B': PALETTE.black,
     }
 
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(14, 2, 28, 16)
+    const pattern = [
+      '                                ',
+      '                                ',
+      '          HHHHHH                ',
+      '         HHHHHHHH               ',
+      '          SSSSSS                ',
+      '          SSSSSS                ',
+      '          SEESSE                ',
+      '          SSSSSS                ',
+      '           SSSS                 ',
+      '          WWWWWW                ',
+      '         GGWTTWgGG              ',
+      '         GGGTTGGGG              ',
+      '        PGGGGGGGGP              ',
+      '        PGGGTTGGGP              ',
+      '        PGGGTTGGGP              ',
+      '         GGGGGGGG               ',
+      '        sGGGGGGGGs              ',
+      '         GGGGGGGG               ',
+      '          GGGGGG                ',
+      '          GG  GG                ',
+      '          GG  GG                ',
+      '          gg  gg                ',
+      '          BB  BB                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
 
-    // Gray hair (balding)
-    ctx.fillStyle = '#888888'
-    ctx.fillRect(14, 2, 6, 4)
-    ctx.fillRect(36, 2, 6, 4)
-    ctx.fillRect(14, 2, 28, 2)
-
-    // Glasses
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(16, 8, 8, 6)
-    ctx.fillRect(32, 8, 8, 6)
-    ctx.fillRect(24, 10, 8, 2)
-    ctx.fillStyle = '#88AACC'
-    ctx.fillRect(17, 9, 6, 4)
-    ctx.fillRect(33, 9, 6, 4)
-
-    // Frown
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(24, 14, 8, 2)
-
-    // Outline
-    ctx.strokeStyle = '#222222'
-    ctx.strokeRect(10, 18, 36, 22)
+    drawPattern(ctx, 0, 0, pattern, colors)
   }
 
-  private static drawIRSAgent(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
+  private static drawBureaucrat(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairGray,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'L': '#88AACC', // Glasses lens
+      'F': PALETTE.black, // Glasses frame
+      'N': PALETTE.suitNavy,
+      'n': PALETTE.suitNavyLight,
+      'W': PALETTE.shirtWhite,
+      'T': PALETTE.tieBlue,
+      'P': PALETTE.paper,
+      'p': PALETTE.paperLines,
+      'B': PALETTE.black,
+    }
+
+    const pattern = [
+      '                                ',
+      '         HHHHHHHH               ',
+      '        H  HHHH  H              ',
+      '        H SSSSSS H              ',
+      '          SSSSSS                ',
+      '         FLLFFLLF               ',
+      '         FLEEFLEE               ',
+      '          SSSSSS                ',
+      '          SsssS                 ',
+      '           SSSS                 ',
+      '          WWWWWW                ',
+      '         NNWTTWNNN              ',
+      '        PNNNTTNNNNP             ',
+      '        PNNNTTNNNNP             ',
+      '        pNNNNNNNNNp             ',
+      '        pNNNNNNNNNp             ',
+      '         NNNNNNNN               ',
+      '        sNNNNNNNNs              ',
+      '         NNNNNNNN               ',
+      '          NNNNNN                ',
+      '          NN  NN                ',
+      '          NN  NN                ',
+      '          nn  nn                ',
+      '          BB  BB                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawIRSAgent(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairBlack,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'L': '#446688',
+      'F': PALETTE.black,
+      'K': PALETTE.suitBlack,
+      'k': '#111111',
+      'W': PALETTE.shirtWhite,
+      'T': PALETTE.tieRed,
+      'C': PALETTE.wood, // Clipboard
+      'c': PALETTE.paper,
+      'B': PALETTE.black,
+    }
+
+    const pattern = [
+      '                                ',
+      '                                ',
+      '          HHHHHH                ',
+      '         HHHHHHHH               ',
+      '         H SSSS H               ',
+      '          SSSSSS                ',
+      '         FLLEELLF               ',
+      '          SSSSSS                ',
+      '          SsssS                 ',
+      '           SSSS                 ',
+      '          WWWWWW                ',
+      '         KKWTTWKKK              ',
+      '         KKKTTKKKKCC            ',
+      '         KKKTTKKKKCc            ',
+      '         KKKKKKKKKCc            ',
+      '         KKKKKKKKK              ',
+      '        sKKKKKKKKKs             ',
+      '         KKKKKKKKK              ',
+      '          KKKKKK                ',
+      '          KK  KK                ',
+      '          KK  KK                ',
+      '          kk  kk                ',
+      '          BB  BB                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawSecretService(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairBlack,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'G': PALETTE.black, // Sunglasses
+      'g': '#1A1A3A',
+      'K': PALETTE.suitBlack,
+      'k': '#0A0A0A',
+      'W': PALETTE.shirtWhite,
+      'E': '#333333', // Earpiece
+      'e': '#222222',
+      'U': PALETTE.metalDark, // Gun
+      'B': PALETTE.black,
+    }
+
+    const pattern = [
+      '                                ',
+      '                                ',
+      '          HHHHHH                ',
+      '         HHHHHHHH               ',
+      '          SSSSSS                ',
+      '          SSSSSSE               ',
+      '         GGGGGGGGe              ',
+      '         gGGggGGge              ',
+      '          SSSSSS                ',
+      '           SSSS                 ',
+      '          WWWWWW                ',
+      '         KKWWWWKKK              ',
+      '         KKKKKKKKK              ',
+      '         KKKKKKKKKU             ',
+      '         KKKKKKKKKUU            ',
+      '         KKKKKKKKK              ',
+      '        sKKKKKKKKKs             ',
+      '         KKKKKKKKK              ',
+      '          KKKKKK                ',
+      '          KK  KK                ',
+      '          KK  KK                ',
+      '          kk  kk                ',
+      '          BB  BB                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawLobbyist(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairBrown,
+      'h': '#443322',
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'N': PALETTE.suitBrown,
+      'n': '#554433',
+      'W': PALETTE.shirtWhite,
+      'T': PALETTE.tieRed,
+      'M': PALETTE.moneyGreen,
+      'm': PALETTE.moneyLight,
+      'G': PALETTE.gold,
+      'B': PALETTE.wood,
+    }
+
+    const pattern = [
+      '                                ',
+      '                                ',
+      '          HHHHHH                ',
+      '         hHHHHHHh               ',
+      '         h SSSS h               ',
+      '          SSSSSS                ',
+      '          SEESSE                ',
+      '          SSSSSS                ',
+      '          SsssS                 ',
+      '           SSSS                 ',
+      '          WWWWWW                ',
+      '         NNWTTWNNN              ',
+      '        MNNNTTNNNNG             ',
+      '        mNNNTTNNNNG             ',
+      '        mNNNNNNNNN              ',
+      '         NNNNNNNNG              ',
+      '        sNNNNNNNNsG             ',
+      '         NNNNNNNN               ',
+      '          NNNNNN                ',
+      '          NN  NN                ',
+      '          NN  NN                ',
+      '          nn  nn                ',
+      '          BB  BB                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawCameraDrone(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'D': PALETTE.metalDark,
+      'd': PALETTE.metal,
+      'P': '#666666', // Propeller blur
+      'L': '#2244AA', // Camera lens
+      'l': '#4466CC',
+      'R': '#FF0000', // Red LED
+      'G': '#00FF00', // Green LED
+      'B': PALETTE.black,
+    }
+
+    const pattern = [
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '       PPP      PPP             ',
+      '      PPPPP    PPPPP            ',
+      '       DDD      DDD             ',
+      '        DD      DD              ',
+      '        DDDDDDDDDD              ',
+      '        DDDDDDDDDD              ',
+      '       RDDDDDDDDDDG             ',
+      '       DDddddddddDD             ',
+      '       DDddddddddDD             ',
+      '       DDddddddddDD             ',
+      '        DDDDDDDDDD              ',
+      '        DDDDDDDDDD              ',
+      '          BBBBB                 ',
+      '         BLLLlLB                ',
+      '         BLLllLB                ',
+      '         BLlllLB                ',
+      '          BBBBB                 ',
+      '        DD      DD              ',
+      '       DDD      DDD             ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+      '                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  // ==========================================================================
+  // BOSS SPRITES (48x48)
+  // ==========================================================================
+  static generateBossSprite(type: string): PIXI.Texture {
+    const key = `boss_${type}`
+    if (this.cache.has(key)) return this.cache.get(key)!
+
+    const canvas = document.createElement('canvas')
     canvas.width = 48
     canvas.height = 48
-    ctx.clearRect(0, 0, 48, 48)
+    const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.ellipse(24, 44, 10, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
+    switch (type) {
+      case 'irs_commissioner':
+        this.drawIRSCommissioner(ctx)
+        break
+      case 'senator':
+      case 'senator_navy':
+        this.drawSenator(ctx, 'navy')
+        break
+      case 'senator_charcoal':
+        this.drawSenator(ctx, 'charcoal')
+        break
+      case 'speaker':
+        this.drawSpeaker(ctx)
+        break
+      case 'vice_president':
+        this.drawVicePresident(ctx)
+        break
+      case 'president':
+        this.drawPresident(ctx)
+        break
+      default:
+        rect(ctx, 8, 8, 32, 32, '#AA0000')
+        rect(ctx, 12, 12, 24, 24, '#FF0000')
+    }
 
-    // Legs
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(14, 32, 8, 12)
-    ctx.fillRect(26, 32, 8, 12)
-
-    // Shoes
-    ctx.fillStyle = '#111111'
-    ctx.fillRect(13, 42, 10, 4)
-    ctx.fillRect(25, 42, 10, 4)
-
-    // Dark suit
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(12, 18, 24, 16)
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(18, 18, 12, 8)
-
-    // Red tie
-    ctx.fillStyle = '#AA0000'
-    ctx.fillRect(22, 18, 4, 12)
-
-    // Arms
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(6, 20, 6, 10)
-    ctx.fillRect(36, 20, 6, 10)
-
-    // Clipboard
-    ctx.fillStyle = '#8B4513'
-    ctx.fillRect(36, 26, 8, 10)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(37, 27, 6, 8)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(16, 4, 16, 14)
-
-    // Hair
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(16, 2, 16, 5)
-    ctx.fillRect(14, 4, 4, 4)
-    ctx.fillRect(30, 4, 4, 4)
-
-    // Glasses
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(17, 8, 6, 4)
-    ctx.fillRect(25, 8, 6, 4)
-    ctx.fillRect(23, 9, 2, 2)
-    ctx.fillStyle = '#444466'
-    ctx.fillRect(18, 9, 4, 2)
-    ctx.fillRect(26, 9, 4, 2)
-
-    // Stern mouth
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(21, 14, 6, 1)
-
-    // Outline
-    ctx.strokeStyle = '#111111'
-    ctx.strokeRect(12, 18, 24, 16)
+    const texture = PIXI.Texture.from(canvas)
+    this.cache.set(key, texture)
+    return texture
   }
 
-  private static drawSecretService(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 48
-    canvas.height = 48
-    ctx.clearRect(0, 0, 48, 48)
+  private static drawIRSCommissioner(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairGray,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'f': '#FFAA88', // Flushed skin
+      'E': PALETTE.black,
+      'L': '#88AACC',
+      'F': PALETTE.black,
+      'W': PALETTE.shirtWhite,
+      'w': '#DDDDDD',
+      'T': PALETTE.tieRed,
+      't': '#AA0000',
+      'X': '#333333', // Suspenders
+      'P': PALETTE.paper,
+      'p': PALETTE.paperLines,
+      'C': PALETTE.wood,
+      'D': '#00AAFF', // Sweat
+      'K': PALETTE.suitBlack,
+      'B': PALETTE.black,
+    }
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.ellipse(24, 44, 10, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
+    const pattern = [
+      '                                                ',
+      '              HHHHHHHHHH                        ',
+      '             H  HHHHHH  H                       ',
+      '            H  ffffffff  H                      ',
+      '               ffffffff                         ',
+      '               ffffffff                         ',
+      '              FLLFFLLF                          ',
+      '             DFLEEFLEEF                         ',
+      '             DfffffffffffD                      ',
+      '              fffsssfff D                       ',
+      '               ffffffff                         ',
+      '              WWWWWWWWWW                        ',
+      '             XWWWWWWWWWWX                       ',
+      '            sXWWWTTWWWWXs                       ',
+      '            sWWWWTTWWWWWs                       ',
+      '            SWWWWTTTWWWWSCC                     ',
+      '            SWWWWTTTWWWWSCPp                    ',
+      '            SWWWWTTTWWWWS CPp                   ',
+      '            sWWWWWWWWWWWs                       ',
+      '             XWWWWWWWWWX                        ',
+      '             XWWWWWWWWWX                        ',
+      '              WWWWWWWWW                         ',
+      '              WWWWWWWWW                         ',
+      '               WWWWWWW                          ',
+      '              KKKKKKKKKK                        ',
+      '              KKK    KKK                        ',
+      '              KKK    KKK                        ',
+      '              KKK    KKK                        ',
+      '              KKK    KKK                        ',
+      '              BBB    BBB                        ',
+      '              BBB    BBB                        ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+    ]
 
-    // Legs
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(14, 32, 8, 12)
-    ctx.fillRect(26, 32, 8, 12)
-
-    // Shoes
-    ctx.fillStyle = '#111111'
-    ctx.fillRect(13, 42, 10, 4)
-    ctx.fillRect(25, 42, 10, 4)
-
-    // Black suit
-    ctx.fillStyle = '#0A0A0A'
-    ctx.fillRect(12, 18, 24, 16)
-
-    // White collar
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(20, 18, 8, 3)
-
-    // Arms
-    ctx.fillStyle = '#0A0A0A'
-    ctx.fillRect(6, 20, 6, 12)
-    ctx.fillRect(36, 20, 6, 12)
-
-    // Gun
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(36, 24, 10, 6)
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(44, 25, 4, 4)
-
-    // Hand
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(6, 30, 5, 4)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(16, 4, 16, 14)
-
-    // Short hair
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(16, 2, 16, 4)
-
-    // Sunglasses
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(16, 8, 16, 4)
-    ctx.fillStyle = '#1A1A3A'
-    ctx.fillRect(17, 9, 6, 2)
-    ctx.fillRect(25, 9, 6, 2)
-
-    // Earpiece
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(32, 10, 4, 6)
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(34, 14, 2, 6)
-
-    // Mouth
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(22, 14, 4, 1)
-
-    // Outline
-    ctx.strokeStyle = '#000000'
-    ctx.strokeRect(12, 18, 24, 16)
+    drawPattern(ctx, 0, 0, pattern, colors)
   }
 
-  private static drawLobbyist(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 48
-    canvas.height = 52
-    ctx.clearRect(0, 0, 48, 52)
+  private static drawSenator(ctx: CanvasRenderingContext2D, variant: 'navy' | 'charcoal'): void {
+    const suitMain = variant === 'navy' ? '#223355' : '#3A3A3A'
+    const suitLight = variant === 'navy' ? '#334466' : '#4A4A4A'
+    const tie = variant === 'navy' ? PALETTE.tieRed : PALETTE.tieBlue
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'
-    ctx.beginPath()
-    ctx.ellipse(24, 48, 10, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairGray,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'N': suitMain,
+      'n': suitLight,
+      'W': PALETTE.shirtWhite,
+      'T': tie,
+      'G': PALETTE.gold, // Flag pin
+      'R': '#CC0000',
+      'U': '#0000AA',
+      'P': PALETTE.paper,
+      'M': '#FFFFFF', // Teeth
+      'B': PALETTE.black,
+    }
 
-    // Legs
-    ctx.fillStyle = '#3A3A2A'
-    ctx.fillRect(14, 34, 8, 14)
-    ctx.fillRect(26, 34, 8, 14)
+    const pattern = [
+      '                                                ',
+      '                                                ',
+      '              HHHHHHHHHH                        ',
+      '             HHHHHHHHHHHH                       ',
+      '            HH SSSSSSSS HH                      ',
+      '            H  SSSSSSSS  H                      ',
+      '               SSSSSSSS                         ',
+      '               SEESSEES                         ',
+      '               SSSSSSSS                         ',
+      '               SSMMMMS                          ',
+      '                SSSSSS                          ',
+      '               WWWWWWWW                         ',
+      '             nNNWWTTWWNNn                       ',
+      '            GNNNNWTTWNNNNN                      ',
+      '            RNNNNNTTNNNNN                       ',
+      '            UNNNNNTTNNNNN                       ',
+      '            NNNNNNTTNNNNN                       ',
+      '           sNNNNNNNNNNNNNs                      ',
+      '           SNNNNNNNNNNNNS                       ',
+      '            NNNNNNNNNNNN                        ',
+      '             NNNNNNNNNN                         ',
+      '              NNNNNNNN                          ',
+      '              NNN  NNN                          ',
+      '              NNN  NNN                          ',
+      '              NNN  NNN                          ',
+      '              NNN  NNN                          ',
+      '              nnn  nnn                          ',
+      '              BBB  BBB                          ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+    ]
 
-    // Shoes
-    ctx.fillStyle = '#4A3A2A'
-    ctx.fillRect(13, 46, 10, 4)
-    ctx.fillRect(25, 46, 10, 4)
-
-    // Brown suit
-    ctx.fillStyle = '#8B7355'
-    ctx.fillRect(12, 18, 24, 18)
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(18, 18, 12, 10)
-
-    // Power tie
-    ctx.fillStyle = '#AA2222'
-    ctx.fillRect(22, 18, 4, 14)
-
-    // Arms
-    ctx.fillStyle = '#8B7355'
-    ctx.fillRect(6, 20, 6, 12)
-    ctx.fillRect(36, 20, 6, 12)
-
-    // Money
-    ctx.fillStyle = '#228822'
-    ctx.fillRect(36, 26, 8, 6)
-    ctx.fillStyle = '#44AA44'
-    ctx.fillRect(37, 27, 6, 4)
-
-    // Coins
-    ctx.fillStyle = '#FFD700'
-    ctx.beginPath()
-    ctx.arc(40, 36, 3, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(36, 42, 3, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(42, 44, 3, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(16, 4, 16, 14)
-
-    // Balding hair
-    ctx.fillStyle = '#6A5A4A'
-    ctx.fillRect(16, 2, 16, 3)
-    ctx.fillRect(14, 4, 4, 6)
-    ctx.fillRect(30, 4, 4, 6)
-
-    // Eyes
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(18, 9, 4, 2)
-    ctx.fillRect(26, 9, 4, 2)
-
-    // Smirk
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(20, 14, 8, 2)
-
-    // Outline
-    ctx.strokeStyle = '#222222'
-    ctx.strokeRect(12, 18, 24, 18)
+    drawPattern(ctx, 0, 0, pattern, colors)
   }
 
-  private static drawCameraDrone(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 40
-    canvas.height = 36
-    ctx.clearRect(0, 0, 40, 36)
+  private static drawSpeaker(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': '#4A3A2A',
+      'h': '#5A4A3A',
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'L': '#88AACC',
+      'F': PALETTE.black,
+      'N': PALETTE.suitNavy,
+      'n': PALETTE.suitNavyLight,
+      'W': PALETTE.shirtWhite,
+      'T': '#8B0000',
+      'P': PALETTE.wood, // Podium
+      'p': PALETTE.woodDark,
+      'G': PALETTE.gold, // Gavel
+      'g': '#DDAA00',
+      'A': '#FFD700', // Seal
+      'B': PALETTE.black,
+    }
 
-    // Propeller blur effect (top)
-    ctx.fillStyle = 'rgba(100, 100, 100, 0.3)'
-    ctx.beginPath()
-    ctx.ellipse(10, 6, 8, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.ellipse(30, 6, 8, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
+    const pattern = [
+      '                                                ',
+      '                                                ',
+      '              HhHHHHHhH                         ',
+      '             HHHHHHHHHHH                        ',
+      '            HH SSSSSSSS HH                      ',
+      '            H  SSSSSSSS  H                      ',
+      '               SSSSSSSS                         ',
+      '              FLLFFLLF                          ',
+      '              FLEEFLEE                          ',
+      '               SSssSSS                          ',
+      '                SSSS                            ',
+      '              WWWWWWWW                          ',
+      '             NNWWWWWWNN              GGG        ',
+      '             NNNWTTWNN              gGGGg       ',
+      '             NNNNTTNNNN              GGG        ',
+      '             NNNNTTNNNN               G         ',
+      '            sNNNNNNNNNNs              G         ',
+      '            SNNNNNNNNNNSG            sG         ',
+      '             NNNNNNNNNNG              G         ',
+      '             pppppppppp               G         ',
+      '            pPPPPPPPPPPp                        ',
+      '            pPPPAAAAPPPp                        ',
+      '            pPPPAAAAPPPp                        ',
+      '            pPPPPPPPPPPp                        ',
+      '            pPPPPPPPPPPp                        ',
+      '            pppppppppppp                        ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+    ]
 
-    // Propeller arms
-    ctx.fillStyle = '#444444'
-    ctx.fillRect(6, 8, 8, 3)
-    ctx.fillRect(26, 8, 8, 3)
-
-    // Main drone body
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(12, 10, 16, 14)
-
-    // Body details
-    ctx.fillStyle = '#555555'
-    ctx.fillRect(14, 12, 12, 10)
-
-    // Camera lens (front)
-    ctx.fillStyle = '#111111'
-    ctx.beginPath()
-    ctx.arc(20, 28, 6, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#2244AA'
-    ctx.beginPath()
-    ctx.arc(20, 28, 4, 0, Math.PI * 2)
-    ctx.fill()
-    // Lens reflection
-    ctx.fillStyle = '#88AAFF'
-    ctx.beginPath()
-    ctx.arc(18, 26, 1.5, 0, Math.PI * 2)
-    ctx.fill()
-
-    // LED indicator lights
-    ctx.fillStyle = '#FF0000'
-    ctx.beginPath()
-    ctx.arc(14, 14, 1.5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#00FF00'
-    ctx.beginPath()
-    ctx.arc(26, 14, 1.5, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Propeller hubs
-    ctx.fillStyle = '#222222'
-    ctx.beginPath()
-    ctx.arc(10, 8, 3, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(30, 8, 3, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Landing skids
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(8, 32, 4, 3)
-    ctx.fillRect(28, 32, 4, 3)
-    ctx.fillRect(6, 33, 8, 2)
-    ctx.fillRect(26, 33, 8, 2)
-
-    // Outline
-    ctx.strokeStyle = '#111111'
-    ctx.lineWidth = 1
-    ctx.strokeRect(12, 10, 16, 14)
+    drawPattern(ctx, 0, 0, pattern, colors)
   }
 
+  private static drawVicePresident(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairWhite,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': PALETTE.black,
+      'K': PALETTE.suitBlack,
+      'k': '#111111',
+      'W': PALETTE.shirtWhite,
+      'T': PALETTE.tieBlue,
+      'G': PALETTE.gold,
+      'g': '#DDAA00',
+      'M': '#FFFFFF',
+      'B': PALETTE.black,
+    }
+
+    const pattern = [
+      '                                                ',
+      '                                                ',
+      '              HHHHHHHHHH                        ',
+      '             HHHHHHHHHHHH                       ',
+      '            HH SSSSSSSS HH                      ',
+      '            H  SSSSSSSS  H                      ',
+      '               SSSSSSSS                         ',
+      '               SEESSEES                         ',
+      '               SSSSSSSS                         ',
+      '               SSMMMMS                          ',
+      '                SSSSSS                          ',
+      '               WWWWWWWW                         ',
+      '             GKKWWTTWWKK                        ',
+      '             gKKWWTTWWKK                        ',
+      '              KKKKTTKKKK                        ',
+      '              KKKKTTKKKK                        ',
+      '              KKKKTTKKKK                        ',
+      '             sKKKKKKKKKKs                       ',
+      '             SKKKKKKKKKKS                       ',
+      '              KKKKKKKKKK                        ',
+      '               KKKKKKKK                         ',
+      '                KKKKKK                          ',
+      '               KKK  KKK                         ',
+      '               KKK  KKK                         ',
+      '               KKK  KKK                         ',
+      '               KKK  KKK                         ',
+      '               kkk  kkk                         ',
+      '               BBB  BBB                         ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawPresident(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'H': PALETTE.hairGray,
+      'S': PALETTE.skin,
+      's': PALETTE.skinDark,
+      'E': '#2A4A6A',
+      'e': PALETTE.black,
+      'K': PALETTE.suitBlack,
+      'k': '#0A0A0A',
+      'W': PALETTE.shirtWhite,
+      'T': '#AA0000',
+      't': '#880000',
+      'G': PALETTE.gold,
+      'g': '#DDAA00',
+      'M': '#FFFFFF',
+      'R': '#CC0000', // Flag
+      'U': '#0000AA',
+      'F': '#8B4513', // Flag pole
+      'B': PALETTE.black,
+    }
+
+    const pattern = [
+      '                                                ',
+      '    F                                    F      ',
+      '    FRRU                                URRFP   ',
+      '    FRRUW                              WURRFP   ',
+      '    F             HHHHHHHHHH              F     ',
+      '    F            HHHHHHHHHHHH             F     ',
+      '    F           HH SSSSSSSS HH            F     ',
+      '    F           H  SSSSSSSS  H            F     ',
+      '                   SSSSSSSS                     ',
+      '                   SEeeSEeS                     ',
+      '                   SSSSSSSS                     ',
+      '                   SSMMMMS                      ',
+      '                    SSSSSS                      ',
+      '                   WWWWWWWW                     ',
+      '                 GKKWWTTWWKKG                   ',
+      '                 gKKWWTTWWKKg                   ',
+      '                  KKKKtTKKKK                    ',
+      '                  KKKKtTKKKK                    ',
+      '                  KKKKTTKKKK                    ',
+      '                 sKKKKKKKKKKs                   ',
+      '                 SKKKKKKKKKKS                   ',
+      '                  KKKKKKKKKK                    ',
+      '                   KKKKKKKK                     ',
+      '                    KKKKKK                      ',
+      '                   KKK  KKK                     ',
+      '                   KKK  KKK                     ',
+      '                   KKK  KKK                     ',
+      '                   KKK  KKK                     ',
+      '                   kkk  kkk                     ',
+      '                   BBB  BBB                     ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+      '                                                ',
+    ]
+
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  // ==========================================================================
+  // PROJECTILE SPRITES (8x8 to 16x16)
+  // ==========================================================================
   static generateProjectileSprite(type: string): PIXI.Texture {
     const key = `projectile_${type}`
     if (this.cache.has(key)) return this.cache.get(key)!
 
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
 
     switch (type) {
       case 'wrench':
-        canvas.width = 24
-        canvas.height = 24
-        ctx.fillStyle = '#888888'
-        ctx.fillRect(4, 10, 16, 4)
-        ctx.fillStyle = '#666666'
-        ctx.fillRect(0, 7, 6, 10)
-        ctx.fillRect(18, 8, 6, 8)
-        ctx.fillStyle = '#AAAAAA'
-        ctx.fillRect(1, 8, 4, 8)
+        canvas.width = 16
+        canvas.height = 16
+        this.drawWrenchProjectile(ctx)
         break
-
       case 'pistol':
-        canvas.width = 10
-        canvas.height = 10
-        ctx.fillStyle = '#FFFF00'
-        ctx.beginPath()
-        ctx.arc(5, 5, 4, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#FFFFFF'
-        ctx.beginPath()
-        ctx.arc(4, 4, 2, 0, Math.PI * 2)
-        ctx.fill()
+        canvas.width = 8
+        canvas.height = 8
+        this.drawBulletProjectile(ctx, PALETTE.bulletYellow, '#FFFFFF')
         break
-
       case 'shotgun':
-        canvas.width = 8
-        canvas.height = 8
-        ctx.fillStyle = '#FF8800'
-        ctx.beginPath()
-        ctx.arc(4, 4, 3, 0, Math.PI * 2)
-        ctx.fill()
+        canvas.width = 6
+        canvas.height = 6
+        this.drawBulletProjectile(ctx, PALETTE.bulletOrange, PALETTE.bulletYellow)
         break
-
       case 'rapidfire':
-        canvas.width = 8
-        canvas.height = 8
-        ctx.fillStyle = '#00FFFF'
-        ctx.beginPath()
-        ctx.arc(4, 4, 3, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#FFFFFF'
-        ctx.beginPath()
-        ctx.arc(4, 4, 1, 0, Math.PI * 2)
-        ctx.fill()
+        canvas.width = 6
+        canvas.height = 6
+        this.drawBulletProjectile(ctx, PALETTE.bulletCyan, '#FFFFFF')
         break
-
       case 'laser':
-        canvas.width = 32
-        canvas.height = 8
-        const gradient = ctx.createLinearGradient(0, 0, 32, 0)
-        gradient.addColorStop(0, '#FF00FF')
-        gradient.addColorStop(0.5, '#FFFFFF')
-        gradient.addColorStop(1, '#FF00FF')
-        ctx.fillStyle = gradient
-        ctx.fillRect(0, 1, 32, 6)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 3, 32, 2)
+        canvas.width = 24
+        canvas.height = 6
+        this.drawLaserProjectile(ctx)
         break
-
       case 'spread':
-        canvas.width = 10
-        canvas.height = 10
-        ctx.fillStyle = '#00FF00'
-        ctx.beginPath()
-        ctx.arc(5, 5, 4, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#88FF88'
-        ctx.beginPath()
-        ctx.arc(4, 4, 2, 0, Math.PI * 2)
-        ctx.fill()
+        canvas.width = 8
+        canvas.height = 8
+        this.drawBulletProjectile(ctx, PALETTE.bulletGreen, '#AAFFAA')
         break
-
-      case 'paperwork':
-        canvas.width = 16
-        canvas.height = 16
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(2, 2, 12, 12)
-        ctx.fillStyle = '#CCCCCC'
-        ctx.fillRect(4, 4, 8, 1)
-        ctx.fillRect(4, 6, 6, 1)
-        ctx.fillRect(4, 8, 8, 1)
-        ctx.fillRect(4, 10, 5, 1)
-        ctx.strokeStyle = '#999999'
-        ctx.strokeRect(2, 2, 12, 12)
-        break
-
       case 'enemy_pistol':
-        canvas.width = 8
-        canvas.height = 8
-        ctx.fillStyle = '#FF4444'
-        ctx.beginPath()
-        ctx.arc(4, 4, 3, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#FF8888'
-        ctx.beginPath()
-        ctx.arc(3, 3, 1, 0, Math.PI * 2)
-        ctx.fill()
+        canvas.width = 6
+        canvas.height = 6
+        this.drawBulletProjectile(ctx, PALETTE.bulletRed, '#FF8888')
         break
-
-      // Boss projectile types
-      case 'audit_beam':
-        canvas.width = 200
+      case 'paperwork':
+        canvas.width = 12
         canvas.height = 12
-        const auditGradient = ctx.createLinearGradient(0, 0, 200, 0)
-        auditGradient.addColorStop(0, 'rgba(255,0,0,0)')
-        auditGradient.addColorStop(0.1, '#FF0000')
-        auditGradient.addColorStop(0.5, '#FFFF00')
-        auditGradient.addColorStop(0.9, '#FF0000')
-        auditGradient.addColorStop(1, 'rgba(255,0,0,0)')
-        ctx.fillStyle = auditGradient
-        ctx.fillRect(0, 0, 200, 12)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 4, 200, 4)
+        this.drawPaperProjectile(ctx)
         break
-
-      case 'paper_storm':
-        canvas.width = 16
-        canvas.height = 16
-        // Spinning paper
-        ctx.fillStyle = '#FFFFFF'
-        ctx.save()
-        ctx.translate(8, 8)
-        ctx.rotate(Math.PI / 4)
-        ctx.fillRect(-6, -8, 12, 16)
-        ctx.restore()
-        ctx.fillStyle = '#AAAAAA'
-        ctx.fillRect(4, 4, 8, 1)
-        ctx.fillRect(4, 7, 6, 1)
-        ctx.fillRect(4, 10, 8, 1)
-        break
-
-      case 'legislation':
-        canvas.width = 18
-        canvas.height = 18
-        // Rolled up bill/scroll
-        ctx.fillStyle = '#F5DEB3'
-        ctx.fillRect(2, 4, 14, 10)
-        ctx.fillStyle = '#DEB887'
-        ctx.beginPath()
-        ctx.arc(2, 9, 5, Math.PI / 2, -Math.PI / 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(16, 9, 5, -Math.PI / 2, Math.PI / 2)
-        ctx.fill()
-        ctx.fillStyle = '#333333'
-        ctx.fillRect(4, 6, 10, 1)
-        ctx.fillRect(4, 9, 8, 1)
-        ctx.fillRect(4, 12, 10, 1)
-        break
-
-      case 'gavel_shockwave':
+      case 'audit_beam':
         canvas.width = 32
-        canvas.height = 32
-        ctx.strokeStyle = '#8B4513'
-        ctx.lineWidth = 4
-        ctx.beginPath()
-        ctx.arc(16, 16, 12, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.strokeStyle = '#A0522D'
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.arc(16, 16, 8, 0, Math.PI * 2)
-        ctx.stroke()
-        break
-
-      case 'tie_breaker_beam':
-        canvas.width = 250
-        canvas.height = 16
-        const tieGradient = ctx.createLinearGradient(0, 0, 250, 0)
-        tieGradient.addColorStop(0, 'rgba(0,0,255,0)')
-        tieGradient.addColorStop(0.1, '#0000FF')
-        tieGradient.addColorStop(0.5, '#00FFFF')
-        tieGradient.addColorStop(0.9, '#0000FF')
-        tieGradient.addColorStop(1, 'rgba(0,0,255,0)')
-        ctx.fillStyle = tieGradient
-        ctx.fillRect(0, 0, 250, 16)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 6, 250, 4)
-        break
-
-      case 'debate_pulse':
-        canvas.width = 48
-        canvas.height = 48
-        ctx.fillStyle = 'rgba(128, 0, 128, 0.5)'
-        ctx.beginPath()
-        ctx.arc(24, 24, 22, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = '#FF00FF'
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(24, 24, 20, 0, Math.PI * 2)
-        ctx.stroke()
-        break
-
-      case 'executive_order':
-        canvas.width = 64
-        canvas.height = 64
-        // Danger zone indicator
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
-        ctx.fillRect(0, 0, 64, 64)
-        ctx.strokeStyle = '#FF0000'
-        ctx.lineWidth = 3
-        ctx.setLineDash([8, 4])
-        ctx.strokeRect(2, 2, 60, 60)
-        ctx.fillStyle = '#FF0000'
-        ctx.font = 'bold 12px Arial'
-        ctx.fillText('!', 28, 38)
-        break
-
-      case 'veto_barrier':
-        canvas.width = 48
-        canvas.height = 64
-        // Reflective shield
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
-        ctx.beginPath()
-        ctx.moveTo(24, 0)
-        ctx.lineTo(48, 16)
-        ctx.lineTo(48, 48)
-        ctx.lineTo(24, 64)
-        ctx.lineTo(0, 48)
-        ctx.lineTo(0, 16)
-        ctx.closePath()
-        ctx.fill()
-        ctx.strokeStyle = '#FFD700'
-        ctx.lineWidth = 3
-        ctx.stroke()
-        ctx.fillStyle = '#FFFFFF'
-        ctx.font = 'bold 16px Arial'
-        ctx.fillText('V', 18, 38)
-        break
-
-      case 'drone_shot':
-        canvas.width = 10
-        canvas.height = 10
-        ctx.fillStyle = '#FF00FF'
-        ctx.beginPath()
-        ctx.arc(5, 5, 4, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#FFFFFF'
-        ctx.beginPath()
-        ctx.arc(4, 4, 1, 0, Math.PI * 2)
-        ctx.fill()
-        break
-
-      case 'airstrike_reticle':
-        canvas.width = 48
-        canvas.height = 48
-        ctx.strokeStyle = '#FF0000'
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.arc(24, 24, 20, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.arc(24, 24, 12, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(24, 0)
-        ctx.lineTo(24, 48)
-        ctx.moveTo(0, 24)
-        ctx.lineTo(48, 24)
-        ctx.stroke()
-        break
-
-      case 'secret_service_shot':
-        canvas.width = 10
-        canvas.height = 10
-        ctx.fillStyle = '#333333'
-        ctx.beginPath()
-        ctx.arc(5, 5, 4, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#666666'
-        ctx.beginPath()
-        ctx.arc(4, 4, 2, 0, Math.PI * 2)
-        ctx.fill()
-        break
-
-      default:
-        canvas.width = 8
         canvas.height = 8
-        ctx.fillStyle = '#FFFFFF'
-        ctx.beginPath()
-        ctx.arc(4, 4, 3, 0, Math.PI * 2)
-        ctx.fill()
+        this.drawBeamProjectile(ctx, '#FF0000', '#FFFF00')
+        break
+      case 'drone_shot':
+        canvas.width = 6
+        canvas.height = 6
+        this.drawBulletProjectile(ctx, PALETTE.bulletPurple, '#FF88FF')
+        break
+      default:
+        canvas.width = 6
+        canvas.height = 6
+        rect(ctx, 1, 1, 4, 4, '#FFFFFF')
     }
 
     const texture = PIXI.Texture.from(canvas)
@@ -879,140 +1053,104 @@ export class SpriteGenerator {
     return texture
   }
 
+  private static drawWrenchProjectile(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'M': PALETTE.metal,
+      'm': PALETTE.metalDark,
+      'H': '#888888',
+    }
+    const pattern = [
+      '                ',
+      '     mmmm       ',
+      '    mMMMMm      ',
+      '    mMHHMm      ',
+      '     mMMm       ',
+      '      mm        ',
+      '      MM        ',
+      '      MM        ',
+      '      MM        ',
+      '      MM        ',
+      '     mMMm       ',
+      '    mMHHMm      ',
+      '    mMMMMm      ',
+      '     mmmm       ',
+      '                ',
+      '                ',
+    ]
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawBulletProjectile(ctx: CanvasRenderingContext2D, main: string, highlight: string): void {
+    const w = ctx.canvas.width
+    const h = ctx.canvas.height
+    // Outer
+    rect(ctx, 1, 1, w - 2, h - 2, main)
+    // Highlight
+    rect(ctx, 1, 1, Math.floor(w / 2) - 1, Math.floor(h / 2) - 1, highlight)
+  }
+
+  private static drawLaserProjectile(ctx: CanvasRenderingContext2D): void {
+    rect(ctx, 0, 1, 24, 4, PALETTE.laserPink)
+    rect(ctx, 0, 2, 24, 2, '#FFFFFF')
+  }
+
+  private static drawPaperProjectile(ctx: CanvasRenderingContext2D): void {
+    rect(ctx, 1, 1, 10, 10, PALETTE.paper)
+    rect(ctx, 2, 3, 6, 1, PALETTE.paperLines)
+    rect(ctx, 2, 5, 5, 1, PALETTE.paperLines)
+    rect(ctx, 2, 7, 7, 1, PALETTE.paperLines)
+  }
+
+  private static drawBeamProjectile(ctx: CanvasRenderingContext2D, edge: string, center: string): void {
+    rect(ctx, 0, 0, 32, 8, edge)
+    rect(ctx, 0, 2, 32, 4, center)
+    rect(ctx, 0, 3, 32, 2, '#FFFFFF')
+  }
+
+  // ==========================================================================
+  // PICKUP SPRITES (16x16)
+  // ==========================================================================
   static generatePickupSprite(type: string): PIXI.Texture {
     const key = `pickup_${type}`
     if (this.cache.has(key)) return this.cache.get(key)!
 
-    const size = 24
     const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
+    canvas.width = 16
+    canvas.height = 16
     const ctx = canvas.getContext('2d')!
-    ctx.clearRect(0, 0, size, size)
+    ctx.imageSmoothingEnabled = false
 
     switch (type) {
       case 'tax_refund_small':
-        ctx.fillStyle = '#228822'
-        ctx.fillRect(4, 8, 16, 10)
-        ctx.fillStyle = '#44AA44'
-        ctx.fillRect(5, 9, 14, 8)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.font = 'bold 10px Arial'
-        ctx.fillText('$', 9, 17)
+        this.drawMoneyPickup(ctx, false)
         break
-
       case 'tax_refund_large':
-        ctx.fillStyle = '#228822'
-        ctx.fillRect(2, 6, 20, 14)
-        ctx.fillStyle = '#44AA44'
-        ctx.fillRect(3, 7, 18, 12)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.font = 'bold 8px Arial'
-        ctx.fillText('$$$', 5, 15)
-        ctx.fillStyle = '#116611'
-        ctx.fillRect(4, 18, 16, 2)
+        this.drawMoneyPickup(ctx, true)
         break
-
       case 'health':
-        ctx.fillStyle = '#FF0000'
-        ctx.fillRect(9, 4, 6, 16)
-        ctx.fillRect(4, 9, 16, 6)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(10, 5, 4, 14)
-        ctx.fillRect(5, 10, 14, 4)
+        this.drawHealthPickup(ctx)
         break
-
       case 'damage_boost':
-        ctx.fillStyle = '#FF8800'
-        ctx.beginPath()
-        ctx.moveTo(12, 2)
-        for (let i = 0; i < 8; i++) {
-          const angle = (i * Math.PI * 2) / 8 - Math.PI / 2
-          const r = i % 2 === 0 ? 10 : 5
-          ctx.lineTo(12 + Math.cos(angle) * r, 12 + Math.sin(angle) * r)
-        }
-        ctx.closePath()
-        ctx.fill()
-        ctx.fillStyle = '#FFCC00'
-        ctx.beginPath()
-        ctx.arc(12, 12, 4, 0, Math.PI * 2)
-        ctx.fill()
+        this.drawPowerPickup(ctx, PALETTE.powerOrange, PALETTE.powerYellow)
         break
-
       case 'spread_boost':
-        ctx.fillStyle = '#00AAFF'
-        ctx.beginPath()
-        ctx.moveTo(12, 4)
-        ctx.lineTo(8, 12)
-        ctx.lineTo(16, 12)
-        ctx.closePath()
-        ctx.fill()
-        ctx.fillRect(10, 12, 4, 8)
-        ctx.fillRect(4, 10, 3, 10)
-        ctx.fillRect(17, 10, 3, 10)
+        this.drawPowerPickup(ctx, PALETTE.bulletCyan, '#88FFFF')
         break
-
       case 'shield':
-        ctx.fillStyle = '#4488FF'
-        ctx.beginPath()
-        ctx.moveTo(12, 2)
-        ctx.lineTo(20, 6)
-        ctx.lineTo(20, 14)
-        ctx.lineTo(12, 22)
-        ctx.lineTo(4, 14)
-        ctx.lineTo(4, 6)
-        ctx.closePath()
-        ctx.fill()
-        ctx.fillStyle = '#88AAFF'
-        ctx.beginPath()
-        ctx.moveTo(12, 5)
-        ctx.lineTo(17, 8)
-        ctx.lineTo(17, 13)
-        ctx.lineTo(12, 19)
-        ctx.lineTo(7, 13)
-        ctx.lineTo(7, 8)
-        ctx.closePath()
-        ctx.fill()
+        this.drawShieldPickup(ctx)
         break
-
       case 'extra_life':
-        ctx.fillStyle = '#FF4488'
-        ctx.beginPath()
-        ctx.moveTo(12, 20)
-        ctx.bezierCurveTo(4, 14, 4, 6, 12, 10)
-        ctx.bezierCurveTo(20, 6, 20, 14, 12, 20)
-        ctx.fill()
-        ctx.fillStyle = '#FF88AA'
-        ctx.beginPath()
-        ctx.arc(8, 8, 2, 0, Math.PI * 2)
-        ctx.fill()
+        this.drawHeartPickup(ctx)
         break
-
       case 'weapon_pistol':
       case 'weapon_shotgun':
       case 'weapon_rapidfire':
       case 'weapon_laser':
       case 'weapon_spread':
-        ctx.fillStyle = '#8B4513'
-        ctx.fillRect(2, 6, 20, 14)
-        ctx.fillStyle = '#A0522D'
-        ctx.fillRect(4, 8, 16, 10)
-        ctx.strokeStyle = '#6B3503'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(2, 10)
-        ctx.lineTo(22, 10)
-        ctx.moveTo(2, 16)
-        ctx.lineTo(22, 16)
-        ctx.stroke()
-        ctx.fillStyle = '#FFFF00'
-        ctx.font = 'bold 10px Arial'
-        ctx.fillText('W', 8, 16)
+        this.drawWeaponPickup(ctx)
         break
-
       default:
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(4, 4, 16, 16)
+        rect(ctx, 2, 2, 12, 12, '#FFFFFF')
     }
 
     const texture = PIXI.Texture.from(canvas)
@@ -1020,651 +1158,170 @@ export class SpriteGenerator {
     return texture
   }
 
+  private static drawMoneyPickup(ctx: CanvasRenderingContext2D, large: boolean): void {
+    const colors: Record<string, string> = {
+      'G': PALETTE.moneyGreen,
+      'g': PALETTE.moneyLight,
+      'W': '#FFFFFF',
+    }
+    const pattern = large ? [
+      '                ',
+      '   GGGGGGGG     ',
+      '  GGggggggGG    ',
+      '  GgGGGGGGgG    ',
+      '  GgGWWWWGgG    ',
+      '  GgGWWWWGgG    ',
+      '  GgGWWWWGgG    ',
+      '  GgGGGGGGgG    ',
+      '  GGggggggGG    ',
+      '   GGGGGGGGG    ',
+      '    GGGGGGGG    ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+    ] : [
+      '                ',
+      '                ',
+      '    GGGGGG      ',
+      '   GGggggGG     ',
+      '   GgGGGGgG     ',
+      '   GgGWWGgG     ',
+      '   GgGWWGgG     ',
+      '   GgGGGGgG     ',
+      '   GGggggGG     ',
+      '    GGGGGG      ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+    ]
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawHealthPickup(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'R': PALETTE.healthRed,
+      'W': '#FFFFFF',
+    }
+    const pattern = [
+      '                ',
+      '                ',
+      '      RR        ',
+      '     RWWR       ',
+      '     RWWR       ',
+      '   RRWWWWRR     ',
+      '  RWWWWWWWWR    ',
+      '  RWWWWWWWWR    ',
+      '   RRWWWWRR     ',
+      '     RWWR       ',
+      '     RWWR       ',
+      '      RR        ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+    ]
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawPowerPickup(ctx: CanvasRenderingContext2D, main: string, light: string): void {
+    // Star shape
+    rect(ctx, 7, 2, 2, 4, main)
+    rect(ctx, 7, 10, 2, 4, main)
+    rect(ctx, 2, 7, 4, 2, main)
+    rect(ctx, 10, 7, 4, 2, main)
+    rect(ctx, 5, 5, 6, 6, main)
+    rect(ctx, 6, 6, 4, 4, light)
+  }
+
+  private static drawShieldPickup(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'B': PALETTE.shieldBlue,
+      'b': PALETTE.shieldLight,
+    }
+    const pattern = [
+      '                ',
+      '                ',
+      '    BBBBBB      ',
+      '   BBbbbbBB     ',
+      '   BbBBBBbB     ',
+      '   BbBBBBbB     ',
+      '   BbBBBBbB     ',
+      '   BBbbbbBB     ',
+      '    BBBBBB      ',
+      '     BBBB       ',
+      '      BB        ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+    ]
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawHeartPickup(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'R': '#FF4488',
+      'r': '#FF88AA',
+    }
+    const pattern = [
+      '                ',
+      '                ',
+      '   RR    RR     ',
+      '  RrrR  RrrR    ',
+      '  RrrrRRrrrR    ',
+      '  RrrrrrrrrR    ',
+      '   RrrrrrrrR    ',
+      '    RrrrrR      ',
+      '     RrrR       ',
+      '      RR        ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+    ]
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  private static drawWeaponPickup(ctx: CanvasRenderingContext2D): void {
+    const colors: Record<string, string> = {
+      'W': PALETTE.wood,
+      'w': PALETTE.woodDark,
+      'Y': PALETTE.bulletYellow,
+    }
+    const pattern = [
+      '                ',
+      '                ',
+      '   wwwwwwww     ',
+      '  wWWWWWWWWw    ',
+      '  wWYYYYYWWw    ',
+      '  wWYYYYYWWw    ',
+      '  wWWWWWWWWw    ',
+      '   wwwwwwww     ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+      '                ',
+    ]
+    drawPattern(ctx, 0, 0, pattern, colors)
+  }
+
+  // ==========================================================================
+  // CACHE MANAGEMENT
+  // ==========================================================================
   static clearCache(): void {
     this.cache.forEach((texture) => texture.destroy(true))
     this.cache.clear()
-  }
-
-  /**
-   * Generate boss sprite based on boss type
-   * Bosses are larger and more detailed than regular enemies
-   *
-   * Boss types and their names:
-   * - irs_commissioner: "Harold Pemberton" (80x80)
-   * - senator / senator_navy: "Senator Richard Thornwood" (64x64)
-   * - senator_charcoal: "Senator James Caldwell" (64x64)
-   * - speaker: "Speaker Margaret Morrison" (72x72)
-   * - vice_president: "Vice President Thomas Hartley" (64x64)
-   * - president: "President William J. Maxwell" (80x80)
-   */
-  static generateBossSprite(type: string): PIXI.Texture {
-    const key = `boss_${type}`
-    if (this.cache.has(key)) return this.cache.get(key)!
-
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')!
-
-    switch (type) {
-      case 'irs_commissioner':
-        this.drawIRSCommissioner(canvas, ctx)
-        break
-      case 'senator':
-      case 'senator_navy':
-        this.drawSenator(canvas, ctx, 'navy')
-        break
-      case 'senator_charcoal':
-        this.drawSenator(canvas, ctx, 'charcoal')
-        break
-      case 'speaker':
-        this.drawSpeaker(canvas, ctx)
-        break
-      case 'vice_president':
-        this.drawVicePresident(canvas, ctx)
-        break
-      case 'president':
-        this.drawPresident(canvas, ctx)
-        break
-      default:
-        // Default boss placeholder
-        canvas.width = 80
-        canvas.height = 80
-        ctx.fillStyle = '#AA0000'
-        ctx.fillRect(10, 10, 60, 60)
-        ctx.fillStyle = '#FF0000'
-        ctx.font = 'bold 16px Arial'
-        ctx.fillText('BOSS', 18, 45)
-    }
-
-    const texture = PIXI.Texture.from(canvas)
-    this.cache.set(key, texture)
-    return texture
-  }
-
-  /**
-   * IRS Commissioner - "Harold Pemberton"
-   * Large, heavy-set man with rolled sleeves, loose tie, sweating profusely
-   * Red-faced from stress, intimidating presence - The ultimate tax collector
-   */
-  private static drawIRSCommissioner(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 80
-    canvas.height = 80
-    ctx.clearRect(0, 0, 80, 80)
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'
-    ctx.beginPath()
-    ctx.ellipse(40, 76, 22, 5, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Legs - heavy set
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(22, 52, 14, 24)
-    ctx.fillRect(44, 52, 14, 24)
-
-    // Shoes
-    ctx.fillStyle = '#0A0A0A'
-    ctx.fillRect(20, 72, 16, 6)
-    ctx.fillRect(44, 72, 16, 6)
-
-    // Body - White dress shirt (no jacket, sleeves rolled)
-    ctx.fillStyle = '#F0F0F0'
-    ctx.fillRect(14, 24, 52, 32)
-
-    // Rolled up sleeves - exposed forearms
-    ctx.fillStyle = '#FFAA88' // Reddish skin tone (stressed)
-    ctx.fillRect(8, 32, 8, 16)
-    ctx.fillRect(64, 32, 8, 16)
-
-    // Shirt wrinkles/details
-    ctx.fillStyle = '#DDDDDD'
-    ctx.fillRect(20, 28, 2, 24)
-    ctx.fillRect(58, 28, 2, 24)
-
-    // Loose tie - askew and disheveled
-    ctx.fillStyle = '#CC0000'
-    ctx.beginPath()
-    ctx.moveTo(38, 24)
-    ctx.lineTo(44, 24)
-    ctx.lineTo(46, 54)
-    ctx.lineTo(40, 56)
-    ctx.lineTo(36, 54)
-    ctx.closePath()
-    ctx.fill()
-    // Tie knot - loose
-    ctx.fillStyle = '#990000'
-    ctx.fillRect(37, 22, 8, 6)
-
-    // Suspenders
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(24, 24, 4, 28)
-    ctx.fillRect(52, 24, 4, 28)
-
-    // Hands - meaty
-    ctx.fillStyle = '#FFAA88'
-    ctx.fillRect(6, 44, 10, 8)
-    ctx.fillRect(64, 44, 10, 8)
-
-    // Clipboard (right hand)
-    ctx.fillStyle = '#8B4513'
-    ctx.fillRect(68, 38, 10, 14)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(69, 40, 8, 10)
-    ctx.fillStyle = '#AA0000'
-    ctx.fillRect(70, 42, 6, 1)
-    ctx.fillRect(70, 44, 6, 1)
-    ctx.fillRect(70, 46, 6, 1)
-
-    // Head - red/flushed face (stressed)
-    ctx.fillStyle = '#FFAA88'
-    ctx.fillRect(24, 2, 32, 24)
-
-    // Bald top with side hair
-    ctx.fillStyle = '#666666'
-    ctx.fillRect(22, 8, 6, 10)
-    ctx.fillRect(52, 8, 6, 10)
-
-    // Furrowed brow
-    ctx.fillStyle = '#FF9977'
-    ctx.fillRect(28, 6, 24, 4)
-
-    // Glasses - stern
-    ctx.fillStyle = '#222222'
-    ctx.fillRect(26, 10, 10, 6)
-    ctx.fillRect(44, 10, 10, 6)
-    ctx.fillRect(36, 12, 8, 2)
-    ctx.fillStyle = '#4466AA'
-    ctx.fillRect(27, 11, 8, 4)
-    ctx.fillRect(45, 11, 8, 4)
-
-    // Angry eyebrows
-    ctx.fillStyle = '#444444'
-    ctx.beginPath()
-    ctx.moveTo(26, 10)
-    ctx.lineTo(36, 8)
-    ctx.lineTo(36, 9)
-    ctx.lineTo(26, 11)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo(54, 10)
-    ctx.lineTo(44, 8)
-    ctx.lineTo(44, 9)
-    ctx.lineTo(54, 11)
-    ctx.fill()
-
-    // Frown
-    ctx.fillStyle = '#CC7766'
-    ctx.fillRect(34, 20, 12, 3)
-
-    // Sweat drops
-    ctx.fillStyle = '#88CCFF'
-    ctx.beginPath()
-    ctx.ellipse(22, 12, 2, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.ellipse(58, 14, 2, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.ellipse(20, 20, 2, 2, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Double chin
-    ctx.fillStyle = '#FF9988'
-    ctx.fillRect(32, 24, 16, 4)
-
-    // Outline
-    ctx.strokeStyle = '#111111'
-    ctx.lineWidth = 2
-    ctx.strokeRect(14, 24, 52, 32)
-  }
-
-  /**
-   * Senator - "Senator Richard Thornwood" (navy) / "Senator James Caldwell" (charcoal)
-   * Slick politician with American flag pin, expensive suit, confident stance
-   */
-  private static drawSenator(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, variant: 'navy' | 'charcoal' = 'navy'): void {
-    canvas.width = 64
-    canvas.height = 64
-    ctx.clearRect(0, 0, 64, 64)
-
-    // Color variants
-    const suitColor = variant === 'navy' ? '#1A2A4A' : '#3A3A3A'
-    const suitLight = variant === 'navy' ? '#2A3A5A' : '#4A4A4A'
-    const tieColor = variant === 'navy' ? '#CC2222' : '#1A4A8A'
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'
-    ctx.beginPath()
-    ctx.ellipse(32, 61, 16, 4, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Legs
-    ctx.fillStyle = suitColor
-    ctx.fillRect(18, 42, 10, 18)
-    ctx.fillRect(36, 42, 10, 18)
-
-    // Shoes - expensive
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(16, 58, 12, 5)
-    ctx.fillRect(36, 58, 12, 5)
-
-    // Expensive suit body
-    ctx.fillStyle = suitColor
-    ctx.fillRect(12, 20, 40, 26)
-
-    // Suit lapels
-    ctx.fillStyle = suitLight
-    ctx.beginPath()
-    ctx.moveTo(12, 20)
-    ctx.lineTo(24, 20)
-    ctx.lineTo(28, 36)
-    ctx.lineTo(12, 36)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo(52, 20)
-    ctx.lineTo(40, 20)
-    ctx.lineTo(36, 36)
-    ctx.lineTo(52, 36)
-    ctx.fill()
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(26, 20, 12, 14)
-
-    // Tie
-    ctx.fillStyle = tieColor
-    ctx.fillRect(30, 20, 4, 20)
-
-    // Arms - confident pose
-    ctx.fillStyle = suitColor
-    ctx.fillRect(4, 22, 10, 18)
-    ctx.fillRect(50, 22, 10, 18)
-
-    // Pointing hand (right)
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(54, 18, 8, 6)
-    ctx.fillRect(60, 20, 4, 2) // Pointing finger
-
-    // Hand with papers (left)
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(2, 36, 8, 6)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(0, 30, 8, 10)
-    ctx.fillStyle = '#AAAAAA'
-    ctx.fillRect(1, 32, 6, 1)
-    ctx.fillRect(1, 35, 6, 1)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(20, 2, 24, 20)
-
-    // Distinguished gray/white hair
-    ctx.fillStyle = '#888888'
-    ctx.fillRect(18, 0, 28, 5)
-    ctx.fillRect(16, 2, 6, 8)
-    ctx.fillRect(42, 2, 6, 8)
-
-    // Eyes - confident
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(24, 9, 3, 2)
-    ctx.fillRect(37, 9, 3, 2)
-
-    // Politician smile - big white teeth
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(28, 15, 8, 3)
-    ctx.strokeStyle = '#CC8866'
-    ctx.lineWidth = 1
-    ctx.strokeRect(28, 15, 8, 3)
-
-    // American flag pin on lapel
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(14, 24, 5, 2)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(14, 26, 5, 1)
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(14, 27, 5, 1)
-    ctx.fillStyle = '#0000AA'
-    ctx.fillRect(14, 24, 2, 4)
-    // Stars (tiny dots)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(14, 24, 1, 1)
-    ctx.fillRect(15, 25, 1, 1)
-
-    // Outline
-    ctx.strokeStyle = '#111122'
-    ctx.lineWidth = 1
-    ctx.strokeRect(12, 20, 40, 26)
-  }
-
-  /**
-   * Speaker of the House - "Speaker Margaret Morrison"
-   * Standing at podium with gavel raised, formal attire, commanding presence
-   */
-  private static drawSpeaker(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 72
-    canvas.height = 72
-    ctx.clearRect(0, 0, 72, 72)
-
-    // Podium
-    ctx.fillStyle = '#5C3317'
-    ctx.fillRect(12, 38, 48, 32)
-    ctx.fillStyle = '#8B4513'
-    ctx.fillRect(15, 41, 42, 26)
-    // Podium seal - House of Representatives
-    ctx.fillStyle = '#FFD700'
-    ctx.beginPath()
-    ctx.arc(36, 54, 10, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#0000AA'
-    ctx.beginPath()
-    ctx.arc(36, 54, 7, 0, Math.PI * 2)
-    ctx.fill()
-    // Eagle silhouette
-    ctx.fillStyle = '#FFD700'
-    ctx.fillRect(33, 52, 6, 2)
-    ctx.fillRect(35, 50, 2, 6)
-
-    // Body behind podium
-    ctx.fillStyle = '#2A3A5A'
-    ctx.fillRect(22, 20, 28, 22)
-
-    // White shirt/blouse
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(30, 20, 12, 12)
-
-    // Formal tie/accessory
-    ctx.fillStyle = '#8B0000'
-    ctx.fillRect(34, 20, 4, 16)
-
-    // Arms on podium
-    ctx.fillStyle = '#2A3A5A'
-    ctx.fillRect(12, 30, 12, 10)
-    ctx.fillRect(48, 30, 12, 10)
-
-    // Hands
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(12, 36, 10, 5)
-    ctx.fillRect(50, 36, 10, 5)
-
-    // Gavel raised in right hand
-    ctx.fillStyle = '#5C3317'
-    ctx.fillRect(58, 20, 5, 18)
-    ctx.fillStyle = '#8B4513'
-    ctx.fillRect(55, 16, 11, 6)
-    // Gavel head highlight
-    ctx.fillStyle = '#A0522D'
-    ctx.fillRect(56, 17, 9, 4)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(24, 2, 24, 20)
-
-    // Hair - styled
-    ctx.fillStyle = '#4A3A2A'
-    ctx.fillRect(22, 0, 28, 5)
-    ctx.fillRect(20, 2, 6, 10)
-    ctx.fillRect(46, 2, 6, 10)
-    // Hair wave detail
-    ctx.fillStyle = '#5A4A3A'
-    ctx.fillRect(24, 1, 8, 3)
-    ctx.fillRect(40, 1, 8, 3)
-
-    // Glasses
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(26, 8, 8, 5)
-    ctx.fillRect(38, 8, 8, 5)
-    ctx.fillRect(34, 9, 4, 2)
-    ctx.fillStyle = '#88AACC'
-    ctx.fillRect(27, 9, 6, 3)
-    ctx.fillRect(39, 9, 6, 3)
-
-    // Stern/authoritative expression
-    ctx.fillStyle = '#CC8866'
-    ctx.fillRect(32, 16, 8, 2)
-
-    // Outline
-    ctx.strokeStyle = '#222222'
-    ctx.lineWidth = 2
-    ctx.strokeRect(12, 38, 48, 32)
-  }
-
-  /**
-   * Vice President - "Vice President Thomas Hartley"
-   * Professional suit, standing pose with subtle authority symbols
-   */
-  private static drawVicePresident(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 64
-    canvas.height = 64
-    ctx.clearRect(0, 0, 64, 64)
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'
-    ctx.beginPath()
-    ctx.ellipse(32, 61, 16, 4, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Legs
-    ctx.fillStyle = '#1A1A2A'
-    ctx.fillRect(18, 42, 10, 18)
-    ctx.fillRect(36, 42, 10, 18)
-
-    // Shoes
-    ctx.fillStyle = '#0A0A0A'
-    ctx.fillRect(16, 58, 12, 5)
-    ctx.fillRect(36, 58, 12, 5)
-
-    // Dark formal suit
-    ctx.fillStyle = '#1A1A2A'
-    ctx.fillRect(12, 20, 40, 26)
-
-    // Suit lapels
-    ctx.fillStyle = '#252535'
-    ctx.beginPath()
-    ctx.moveTo(12, 20)
-    ctx.lineTo(22, 20)
-    ctx.lineTo(26, 34)
-    ctx.lineTo(12, 34)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo(52, 20)
-    ctx.lineTo(42, 20)
-    ctx.lineTo(38, 34)
-    ctx.lineTo(52, 34)
-    ctx.fill()
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(26, 20, 12, 14)
-
-    // Blue tie
-    ctx.fillStyle = '#1A3A6A'
-    ctx.fillRect(30, 20, 4, 20)
-
-    // Arms - professional stance
-    ctx.fillStyle = '#1A1A2A'
-    ctx.fillRect(4, 22, 10, 18)
-    ctx.fillRect(50, 22, 10, 18)
-
-    // Hands
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(4, 36, 8, 6)
-    ctx.fillRect(52, 36, 8, 6)
-
-    // Head
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(20, 2, 24, 20)
-
-    // White/silver hair - distinguished
-    ctx.fillStyle = '#CCCCCC'
-    ctx.fillRect(18, 0, 28, 5)
-    ctx.fillRect(16, 2, 6, 8)
-    ctx.fillRect(42, 2, 6, 8)
-
-    // Eyes
-    ctx.fillStyle = '#333333'
-    ctx.fillRect(24, 9, 3, 2)
-    ctx.fillRect(37, 9, 3, 2)
-
-    // Confident smile
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(28, 16, 8, 3)
-    ctx.strokeStyle = '#CC8866'
-    ctx.lineWidth = 1
-    ctx.strokeRect(28, 16, 8, 3)
-
-    // VP seal pin on lapel
-    ctx.fillStyle = '#FFD700'
-    ctx.beginPath()
-    ctx.arc(16, 26, 4, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#0000AA'
-    ctx.beginPath()
-    ctx.arc(16, 26, 2, 0, Math.PI * 2)
-    ctx.fill()
-    // Eagle detail
-    ctx.fillStyle = '#FFD700'
-    ctx.fillRect(14, 26, 4, 1)
-
-    // Outline
-    ctx.strokeStyle = '#111111'
-    ctx.lineWidth = 1
-    ctx.strokeRect(12, 20, 40, 26)
-  }
-
-  /**
-   * President - "President William J. Maxwell"
-   * The final boss - dark suit, red tie, gray hair, most imposing of all
-   * Behind podium with American flags, presidential seal
-   */
-  private static drawPresident(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    canvas.width = 80
-    canvas.height = 80
-    ctx.clearRect(0, 0, 80, 80)
-
-    // American flags on sides (behind everything)
-    // Left flag
-    ctx.fillStyle = '#8B4513'
-    ctx.fillRect(2, 4, 3, 40)
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(5, 4, 10, 2)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(5, 6, 10, 2)
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(5, 8, 10, 2)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(5, 10, 10, 2)
-    ctx.fillStyle = '#0000AA'
-    ctx.fillRect(5, 4, 4, 8)
-    // Right flag
-    ctx.fillStyle = '#8B4513'
-    ctx.fillRect(75, 4, 3, 40)
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(65, 4, 10, 2)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(65, 6, 10, 2)
-    ctx.fillStyle = '#CC0000'
-    ctx.fillRect(65, 8, 10, 2)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(65, 10, 10, 2)
-    ctx.fillStyle = '#0000AA'
-    ctx.fillRect(71, 4, 4, 8)
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'
-    ctx.beginPath()
-    ctx.ellipse(40, 77, 20, 5, 0, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Legs
-    ctx.fillStyle = '#1A1A1A'
-    ctx.fillRect(24, 52, 12, 24)
-    ctx.fillRect(44, 52, 12, 24)
-
-    // Shoes
-    ctx.fillStyle = '#0A0A0A'
-    ctx.fillRect(22, 74, 14, 5)
-    ctx.fillRect(44, 74, 14, 5)
-
-    // Presidential suit - dark and distinguished
-    ctx.fillStyle = '#1A1A2A'
-    ctx.fillRect(16, 24, 48, 32)
-
-    // Suit lapels - subtle gold trim
-    ctx.fillStyle = '#2A2A3A'
-    ctx.beginPath()
-    ctx.moveTo(16, 24)
-    ctx.lineTo(28, 24)
-    ctx.lineTo(34, 44)
-    ctx.lineTo(16, 44)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.moveTo(64, 24)
-    ctx.lineTo(52, 24)
-    ctx.lineTo(46, 44)
-    ctx.lineTo(64, 44)
-    ctx.fill()
-
-    // White shirt
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(32, 24, 16, 18)
-
-    // Red power tie
-    ctx.fillStyle = '#AA0000'
-    ctx.fillRect(37, 24, 6, 26)
-    ctx.fillStyle = '#880000'
-    ctx.fillRect(37, 36, 6, 3) // Tie stripe
-
-    // Arms - commanding pose
-    ctx.fillStyle = '#1A1A2A'
-    ctx.fillRect(6, 28, 12, 22)
-    ctx.fillRect(62, 28, 12, 22)
-
-    // Hands
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(6, 46, 10, 6)
-    ctx.fillRect(64, 46, 10, 6)
-
-    // Head - prominent
-    ctx.fillStyle = '#FFCC99'
-    ctx.fillRect(24, 2, 32, 24)
-
-    // Distinguished gray hair
-    ctx.fillStyle = '#777777'
-    ctx.fillRect(22, 0, 36, 6)
-    ctx.fillRect(20, 2, 6, 10)
-    ctx.fillRect(54, 2, 6, 10)
-
-    // Eyes - determined, powerful
-    ctx.fillStyle = '#2A4A6A'
-    ctx.fillRect(30, 10, 4, 3)
-    ctx.fillRect(46, 10, 4, 3)
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(31, 11, 2, 1)
-    ctx.fillRect(47, 11, 2, 1)
-
-    // Confident presidential smile
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(34, 18, 12, 4)
-    ctx.strokeStyle = '#CC8866'
-    ctx.lineWidth = 1
-    ctx.strokeRect(34, 18, 12, 4)
-
-    // Presidential seal pin
-    ctx.fillStyle = '#FFD700'
-    ctx.beginPath()
-    ctx.arc(20, 32, 5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#FFFFFF'
-    ctx.beginPath()
-    ctx.arc(20, 32, 3, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#0000AA'
-    ctx.beginPath()
-    ctx.arc(20, 32, 1.5, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Outline
-    ctx.strokeStyle = '#111111'
-    ctx.lineWidth = 2
-    ctx.strokeRect(16, 24, 48, 32)
   }
 }

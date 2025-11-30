@@ -284,8 +284,8 @@ const SENATOR_PAIR_CONFIG: BossConfig = {
   speed: 100,
   contactDamage: 15,
   scoreValue: 6000,
-  width: 64,
-  height: 64,
+  width: 48,
+  height: 48,
   attacks: createAttacks()
 }
 

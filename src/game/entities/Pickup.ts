@@ -59,7 +59,7 @@ export class Pickup extends Entity {
   private bobTimer: number = 0
 
   constructor(type: PickupType, x: number, y: number) {
-    super(SpriteGenerator.generatePickupSprite(type), 20, 20)
+    super(SpriteGenerator.generatePickupSprite(type), 16, 16)
     this.pickupType = type
     this.config = PICKUP_CONFIGS[type]
     this.x = x

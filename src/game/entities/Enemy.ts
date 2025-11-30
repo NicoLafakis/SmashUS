@@ -82,19 +82,12 @@ export class Enemy extends Entity {
   public aimAngle: number = 0
 
   constructor(config: EnemyConfig, x: number, y: number) {
-    super(SpriteGenerator.generateEnemySprite(config.type), 28, 28)
+    super(SpriteGenerator.generateEnemySprite(config.type), 32, 32)
     this.id = ++enemyIdCounter
     this.config = config
     this.health = config.health
     this.x = x
     this.y = y
-
-    // Larger hitbox for bureaucrat
-    if (config.type === 'bureaucrat') {
-      this.width = 36
-      this.height = 32
-      this.sprite.scale.set(1.2)
-    }
   }
 
   update(dt: number): void {

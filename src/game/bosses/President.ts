@@ -428,8 +428,8 @@ const PRESIDENT_CONFIG: BossConfig = {
   speed: 70,
   contactDamage: 25,
   scoreValue: 10000,
-  width: 80,
-  height: 80,
+  width: 48,
+  height: 48,
   attacks: createAttacks()
 }
 

@@ -262,8 +262,8 @@ const VICE_PRESIDENT_CONFIG: BossConfig = {
   speed: 90,
   contactDamage: 18,
   scoreValue: 6500,
-  width: 64,
-  height: 64,
+  width: 48,
+  height: 48,
   attacks: createAttacks()
 }
 

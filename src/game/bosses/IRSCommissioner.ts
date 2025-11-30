@@ -218,8 +218,8 @@ const IRS_COMMISSIONER_CONFIG: BossConfig = {
   speed: 80,
   contactDamage: 20,
   scoreValue: 5000,
-  width: 80,
-  height: 80,
+  width: 48,
+  height: 48,
   attacks: createAttacks()
 }
 

@@ -29,7 +29,7 @@ export class Player extends Entity {
   private spreadBoostTimer: number = 0
 
   constructor() {
-    super(SpriteGenerator.generatePlayerSprite(), 28, 28)
+    super(SpriteGenerator.generatePlayerSprite(), 32, 32)
     this.x = GAME_WIDTH / 2
     this.y = GAME_HEIGHT / 2
     this.weapon = new Wrench()
