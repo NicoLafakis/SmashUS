@@ -38,18 +38,18 @@ export const PICKUP_CONFIGS: Record<PickupType, PickupConfig> = {
 
 // Drop rates for different pickup types
 export const PICKUP_DROP_RATES: { type: PickupType; weight: number }[] = [
-  { type: 'tax_refund_small', weight: 40 },
-  { type: 'tax_refund_large', weight: 10 },
+  { type: 'tax_refund_small', weight: 50 },
+  { type: 'tax_refund_large', weight: 15 },
   { type: 'health', weight: 20 },
   { type: 'damage_boost', weight: 8 },
   { type: 'spread_boost', weight: 8 },
   { type: 'shield', weight: 6 },
   { type: 'extra_life', weight: 2 }, // Rare!
-  { type: 'weapon_pistol', weight: 6 },
-  { type: 'weapon_shotgun', weight: 4 },
-  { type: 'weapon_rapidfire', weight: 4 },
-  { type: 'weapon_laser', weight: 3 },
-  { type: 'weapon_spread', weight: 4 }
+  { type: 'weapon_pistol', weight: 8 },
+  { type: 'weapon_shotgun', weight: 6 },
+  { type: 'weapon_rapidfire', weight: 6 },
+  { type: 'weapon_laser', weight: 5 },
+  { type: 'weapon_spread', weight: 6 }
 ]
 
 export class Pickup extends Entity {

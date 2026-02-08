@@ -4,7 +4,7 @@ export class Pistol extends Weapon {
   constructor() {
     const stats: WeaponStats = {
       name: 'Pistol',
-      damage: 15,
+      damage: 14,
       fireRate: 5,
       projectileSpeed: 500,
       projectileType: 'pistol',

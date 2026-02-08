@@ -49,7 +49,7 @@ export class HUD {
     // Score (top right)
     this.scoreText = new PIXI.Text('Score: 0', {
       fontFamily: 'Arial',
-      fontSize: 24,
+      fontSize: 28,
       fontWeight: 'bold',
       fill: '#ffffff'
     })
@@ -61,7 +61,7 @@ export class HUD {
     // Lives (below score)
     this.livesText = new PIXI.Text('Lives: 3', {
       fontFamily: 'Arial',
-      fontSize: 18,
+      fontSize: 22,
       fill: '#ff4444'
     })
     this.livesText.anchor.set(1, 0)
@@ -72,7 +72,7 @@ export class HUD {
     // Money (below lives)
     this.moneyText = new PIXI.Text('$0', {
       fontFamily: 'Arial',
-      fontSize: 18,
+      fontSize: 22,
       fontWeight: 'bold',
       fill: '#ffcc00'
     })
@@ -129,7 +129,7 @@ export class HUD {
 
     // Shield pips
     this.shieldPips.clear()
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < player.maxShield; i++) {
       if (i < player.shield) {
         this.shieldPips.beginFill(0x4488ff)
       } else {

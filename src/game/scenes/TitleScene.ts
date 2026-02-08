@@ -53,7 +53,7 @@ export class TitleScene extends Scene {
     this.container.addChild(tagline)
 
     // Start prompt
-    this.startPrompt = new PIXI.Text('Click to Start', {
+    this.startPrompt = new PIXI.Text('Tap or Click to Start', {
       fontFamily: 'Arial',
       fontSize: 32,
       fill: '#ffffff',
@@ -65,7 +65,7 @@ export class TitleScene extends Scene {
 
     // Controls
     const controls = new PIXI.Text(
-      'WASD: Move   |   Mouse: Aim   |   Left Click: Fire',
+      'Touch: Dual Sticks  |  WASD: Move  |  Mouse: Aim + Fire',
       {
         fontFamily: 'Arial',
         fontSize: 18,

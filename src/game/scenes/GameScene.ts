@@ -52,7 +52,7 @@ const CONTACT_DAMAGE = 10
 const ROOM_CLEAR_BONUS = 500
 const NO_DAMAGE_BONUS = 1000
 const BOSS_CLEAR_BONUS = 2000
-const DROP_CHANCE = 0.35 // 35% chance to drop a pickup
+const DROP_CHANCE = 0.65 // 65% chance to drop a pickup
 
 export class GameScene extends Scene {
   private player!: Player
@@ -362,6 +362,7 @@ export class GameScene extends Scene {
     }
 
     const input = this.game.input.getState()
+    this.game.input.setPlayerPosition(this.player.x, this.player.y)
 
     // Update player
     this.player.handleInput(input, dt)
@@ -649,7 +650,7 @@ export class GameScene extends Scene {
   }
 
   private fireWeapon(baseAngle: number): void {
-    const projectileConfigs = this.player.weapon.fire()
+    const projectileConfigs = this.player.weapon.fire(this.player.fireRateMultiplier)
     if (!projectileConfigs) return
 
     const angles = this.player.weapon.getProjectileAngles(

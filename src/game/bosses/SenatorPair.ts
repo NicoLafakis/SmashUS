@@ -107,10 +107,11 @@ function createAttacks(): BossAttack[] {
 
         // Make the filibustering senator invincible
         if (state.filibusteringSenator === 'navy') {
-          // Main boss is invincible during their filibuster
-          senatorBoss.secondSenator.isInvincible = false
-        } else {
+          // Main boss (navy) is filibustering - second senator is protected too
           senatorBoss.secondSenator.isInvincible = true
+        } else {
+          // Second senator (charcoal) is filibustering - they become vulnerable
+          senatorBoss.secondSenator.isInvincible = false
         }
       },
       execute: (boss: Boss, player: Player, dt: number, attackTime: number) => {

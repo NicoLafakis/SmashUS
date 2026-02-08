@@ -4,7 +4,7 @@ export class RapidFire extends Weapon {
   constructor() {
     const stats: WeaponStats = {
       name: 'Rapid Fire',
-      damage: 8,
+      damage: 7,
       fireRate: 12,
       projectileSpeed: 550,
       projectileType: 'rapidfire',
