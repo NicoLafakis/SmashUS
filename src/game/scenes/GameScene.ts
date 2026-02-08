@@ -361,8 +361,8 @@ export class GameScene extends Scene {
       return
     }
 
-    const input = this.game.input.getState()
     this.game.input.setPlayerPosition(this.player.x, this.player.y)
+    const input = this.game.input.getState()
 
     // Update player
     this.player.handleInput(input, dt)
