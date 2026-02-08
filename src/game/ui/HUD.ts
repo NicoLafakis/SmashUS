@@ -15,6 +15,7 @@ export class HUD {
   private damageBoostBar: PIXI.Graphics
   private spreadBoostBar: PIXI.Graphics
   private moneyText: PIXI.Text
+  private enemyCountText: PIXI.Text
 
   constructor() {
     this.container = new PIXI.Container()
@@ -92,6 +93,17 @@ export class HUD {
     this.roomText.y = 10
     this.container.addChild(this.roomText)
 
+    // Enemy count (below room indicator)
+    this.enemyCountText = new PIXI.Text('', {
+      fontFamily: 'Arial',
+      fontSize: 16,
+      fill: '#ff8888'
+    })
+    this.enemyCountText.anchor.set(0.5, 0)
+    this.enemyCountText.x = GAME_WIDTH / 2
+    this.enemyCountText.y = 34
+    this.container.addChild(this.enemyCountText)
+
     // Weapon indicator (bottom left)
     this.weaponText = new PIXI.Text('Wrench', {
       fontFamily: 'Arial',
@@ -118,7 +130,7 @@ export class HUD {
     this.powerupContainer.addChild(this.spreadBoostBar)
   }
 
-  update(player: Player, level: number, room: number): void {
+  update(player: Player, level: number, room: number, enemyCount: number = 0): void {
     // Health bar
     const healthPercent = player.health / player.maxHealth
     this.healthBar.clear()
@@ -150,6 +162,14 @@ export class HUD {
 
     // Room
     this.roomText.text = `Level ${level} - Room ${room}`
+
+    // Enemy count
+    if (enemyCount > 0) {
+      this.enemyCountText.text = `Enemies: ${enemyCount}`
+      this.enemyCountText.visible = true
+    } else {
+      this.enemyCountText.visible = false
+    }
 
     // Weapon
     this.weaponText.text = player.weapon.stats.name

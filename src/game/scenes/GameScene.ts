@@ -85,6 +85,9 @@ export class GameScene extends Scene {
   private isTransitioning: boolean = false
   private tookDamageThisRoom: boolean = false
   private bossJustDefeated: boolean = false // Flag to transition to shop
+  private paused: boolean = false
+  private pauseOverlay!: PIXI.Container
+  private prevEscDown: boolean = false
 
   private roomClearedText!: PIXI.Text
 
@@ -164,6 +167,9 @@ export class GameScene extends Scene {
     // Boss health bar (hidden initially)
     this.createBossHealthBar()
 
+    // Pause overlay (hidden initially)
+    this.createPauseOverlay()
+
     // Start first room
     this.startRoom()
   }
@@ -204,6 +210,42 @@ export class GameScene extends Scene {
     this.bossNameText.y = barY - 4
     this.bossNameText.visible = false
     this.uiLayer.addChild(this.bossNameText)
+  }
+
+  private createPauseOverlay(): void {
+    this.pauseOverlay = new PIXI.Container()
+    this.pauseOverlay.visible = false
+
+    const bg = new PIXI.Graphics()
+    bg.beginFill(0x000000, 0.6)
+    bg.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    bg.endFill()
+    this.pauseOverlay.addChild(bg)
+
+    const text = new PIXI.Text('PAUSED', {
+      fontFamily: 'Arial',
+      fontSize: 64,
+      fontWeight: 'bold',
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4
+    })
+    text.anchor.set(0.5)
+    text.x = GAME_WIDTH / 2
+    text.y = GAME_HEIGHT / 2 - 30
+    this.pauseOverlay.addChild(text)
+
+    const hint = new PIXI.Text('Press ESC or P to resume', {
+      fontFamily: 'Arial',
+      fontSize: 22,
+      fill: '#aaaaaa'
+    })
+    hint.anchor.set(0.5)
+    hint.x = GAME_WIDTH / 2
+    hint.y = GAME_HEIGHT / 2 + 30
+    this.pauseOverlay.addChild(hint)
+
+    this.uiLayer.addChild(this.pauseOverlay)
   }
 
   private updateBossHealthBar(): void {
@@ -352,6 +394,15 @@ export class GameScene extends Scene {
   }
 
   update(dt: number): void {
+    // Pause toggle
+    const escDown = this.game.input.isKeyDown('Escape') || this.game.input.isKeyDown('KeyP')
+    if (escDown && !this.prevEscDown) {
+      this.paused = !this.paused
+      this.pauseOverlay.visible = this.paused
+    }
+    this.prevEscDown = escDown
+    if (this.paused) return
+
     if (this.isTransitioning) {
       this.roomTransitionTimer -= dt
       if (this.roomTransitionTimer <= 0) {
@@ -451,7 +502,8 @@ export class GameScene extends Scene {
     }
 
     // Update HUD
-    this.hud.update(this.player, this.currentLevel, this.currentRoom)
+    const aliveEnemies = this.room.enemies.filter(e => e.active).length
+    this.hud.update(this.player, this.currentLevel, this.currentRoom, aliveEnemies)
 
     // Update boss health bar
     this.updateBossHealthBar()

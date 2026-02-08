@@ -237,13 +237,6 @@ export class InputManager {
     return this.keys.has(code.toLowerCase())
   }
 
-  isKeyPressed(code: string): boolean {
-    return this.keys.has(code.toLowerCase())
-  }
-
-  isKeyJustPressed(code: string): boolean {
-    return this.keys.has(code.toLowerCase())
-  }
 
   update(): void {
     this.prevMouseDown = this.mouseDown
