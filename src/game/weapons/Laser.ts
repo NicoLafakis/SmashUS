@@ -4,8 +4,8 @@ export class Laser extends Weapon {
   constructor() {
     const stats: WeaponStats = {
       name: 'Laser',
-      damage: 25,
-      fireRate: 2,
+      damage: 30,
+      fireRate: 2.5,
       projectileSpeed: 800,
       projectileType: 'laser',
       spread: 1,

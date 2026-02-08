@@ -4,7 +4,7 @@ export class SpreadShot extends Weapon {
   constructor() {
     const stats: WeaponStats = {
       name: 'Spread Shot',
-      damage: 12,
+      damage: 8,
       fireRate: 4,
       projectileSpeed: 500,
       projectileType: 'spread',

@@ -33,11 +33,10 @@ export class Room {
     if (this.cleared) return true
     if (!this.started) return false
 
-    // Check if current wave enemies are all dead
     const aliveEnemies = this.enemies.filter((e) => e.active)
 
-    // If no alive enemies and we have more waves, spawn next wave
-    if (aliveEnemies.length === 0 && this.currentWave < this.config.waves.length) {
+    // Timer-based wave spawning - waves overlap, don't wait for kills
+    if (this.currentWave < this.config.waves.length) {
       this.waveTimer -= dt
       if (this.waveTimer <= 0) {
         this.spawnWave(this.config.waves[this.currentWave])
@@ -48,7 +47,7 @@ export class Room {
       }
     }
 
-    // Room is cleared when all waves are done and no enemies remain
+    // Room is cleared when all waves spawned and no enemies remain
     if (
       this.currentWave >= this.config.waves.length &&
       aliveEnemies.length === 0
@@ -120,25 +119,33 @@ export function generateRoomConfig(level: number, roomNumber: number): RoomConfi
       if (roomNumber <= 3) {
         waves.push({
           enemies: [
-            { type: 'intern', count: 2 + roomNumber }
+            { type: 'intern', count: 4 + roomNumber * 2 }
           ],
           delay: 0.5
+        })
+        waves.push({
+          enemies: [
+            { type: 'bureaucrat', count: 1 + roomNumber },
+            { type: 'intern', count: 3 + roomNumber }
+          ],
+          delay: 3
         })
         if (roomNumber >= 2) {
           waves.push({
             enemies: [
-              { type: 'bureaucrat', count: 1 },
-              { type: 'intern', count: roomNumber }
+              { type: 'irs_agent', count: 2 },
+              { type: 'intern', count: 3 }
             ],
-            delay: 2
+            delay: 3
           })
         }
         if (roomNumber >= 3) {
           waves.push({
             enemies: [
-              { type: 'irs_agent', count: 2 }
+              { type: 'irs_agent', count: 3 },
+              { type: 'bureaucrat', count: 2 }
             ],
-            delay: 2
+            delay: 3
           })
         }
       } else {
@@ -150,26 +157,25 @@ export function generateRoomConfig(level: number, roomNumber: number): RoomConfi
     case 2: // Capitol Hallways
       waves.push({
         enemies: [
-          { type: 'intern', count: 3 },
-          { type: 'bureaucrat', count: 1 }
+          { type: 'intern', count: 5 },
+          { type: 'bureaucrat', count: 2 }
         ],
         delay: 0.5
       })
       waves.push({
         enemies: [
-          { type: 'irs_agent', count: 2 },
-          { type: 'secret_service', count: roomNumber }
+          { type: 'irs_agent', count: 3 },
+          { type: 'secret_service', count: 1 + roomNumber }
         ],
-        delay: 2
+        delay: 3
       })
-      if (roomNumber >= 3) {
-        waves.push({
-          enemies: [
-            { type: 'secret_service', count: 3 }
-          ],
-          delay: 2
-        })
-      }
+      waves.push({
+        enemies: [
+          { type: 'secret_service', count: 2 + roomNumber },
+          { type: 'intern', count: 4 }
+        ],
+        delay: 3
+      })
       if (roomNumber >= 5) {
         return { waves: [], isBoss: true, bossType: 'senator_pair' }
       }
@@ -178,18 +184,25 @@ export function generateRoomConfig(level: number, roomNumber: number): RoomConfi
     case 3: // House Chamber
       waves.push({
         enemies: [
-          { type: 'bureaucrat', count: 2 },
-          { type: 'secret_service', count: 2 }
+          { type: 'bureaucrat', count: 3 },
+          { type: 'secret_service', count: 3 }
         ],
         delay: 0.5
       })
       waves.push({
         enemies: [
-          { type: 'irs_agent', count: 2 },
-          { type: 'secret_service', count: 2 },
-          { type: 'intern', count: 3 }
+          { type: 'irs_agent', count: 3 },
+          { type: 'secret_service', count: 3 },
+          { type: 'intern', count: 5 }
         ],
-        delay: 2
+        delay: 3
+      })
+      waves.push({
+        enemies: [
+          { type: 'lobbyist', count: 2 },
+          { type: 'intern', count: 6 }
+        ],
+        delay: 3
       })
       if (roomNumber >= 5) {
         return { waves: [], isBoss: true, bossType: 'speaker' }
@@ -199,24 +212,31 @@ export function generateRoomConfig(level: number, roomNumber: number): RoomConfi
     case 4: // Senate Chamber
       waves.push({
         enemies: [
-          { type: 'lobbyist', count: 2 },
-          { type: 'bureaucrat', count: 2 }
+          { type: 'lobbyist', count: 3 },
+          { type: 'bureaucrat', count: 3 }
         ],
         delay: 0.5
       })
       waves.push({
         enemies: [
-          { type: 'secret_service', count: 3 },
-          { type: 'lobbyist', count: 1 }
+          { type: 'secret_service', count: 4 },
+          { type: 'lobbyist', count: 2 }
         ],
-        delay: 2
+        delay: 3
       })
       waves.push({
         enemies: [
-          { type: 'irs_agent', count: 2 },
-          { type: 'intern', count: 4 }
+          { type: 'irs_agent', count: 3 },
+          { type: 'intern', count: 6 }
         ],
-        delay: 2
+        delay: 3
+      })
+      waves.push({
+        enemies: [
+          { type: 'secret_service', count: 3 },
+          { type: 'bureaucrat', count: 2 }
+        ],
+        delay: 3
       })
       if (roomNumber >= 6) {
         return { waves: [], isBoss: true, bossType: 'senator_pair_2' }
@@ -227,24 +247,32 @@ export function generateRoomConfig(level: number, roomNumber: number): RoomConfi
     default:
       waves.push({
         enemies: [
-          { type: 'secret_service', count: 4 }
+          { type: 'secret_service', count: 6 }
         ],
         delay: 0.5
       })
       waves.push({
         enemies: [
-          { type: 'lobbyist', count: 2 },
-          { type: 'bureaucrat', count: 2 },
-          { type: 'irs_agent', count: 2 }
+          { type: 'lobbyist', count: 3 },
+          { type: 'bureaucrat', count: 3 },
+          { type: 'irs_agent', count: 3 }
         ],
-        delay: 2
+        delay: 3
       })
       waves.push({
         enemies: [
-          { type: 'secret_service', count: 4 },
-          { type: 'intern', count: 5 }
+          { type: 'secret_service', count: 5 },
+          { type: 'intern', count: 8 }
         ],
-        delay: 2
+        delay: 3
+      })
+      waves.push({
+        enemies: [
+          { type: 'lobbyist', count: 2 },
+          { type: 'irs_agent', count: 3 },
+          { type: 'secret_service', count: 3 }
+        ],
+        delay: 3
       })
       if (roomNumber >= 6) {
         return { waves: [], isBoss: true, bossType: 'president' }

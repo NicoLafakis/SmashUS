@@ -39,7 +39,15 @@ export class Game {
     this.resizeCanvas()
     window.addEventListener('resize', () => this.resizeCanvas())
 
+    // Lock to landscape if supported
+    try {
+      (screen.orientation as any)?.lock?.('landscape').catch(() => {})
+    } catch (_e) { /* not supported */ }
+
     this.input = new InputManager(this.app.view as HTMLCanvasElement)
+    // Add touch joystick overlay to stage (renders above everything)
+    this.app.stage.addChild(this.input.container)
+
     this.sceneManager = new SceneManager(this)
     this.gameLoop = new GameLoop(this)
     this.assetLoader = AssetLoader.getInstance()

@@ -4,8 +4,8 @@ export class Shotgun extends Weapon {
   constructor() {
     const stats: WeaponStats = {
       name: 'Shotgun',
-      damage: 8,
-      fireRate: 2,
+      damage: 7,
+      fireRate: 2.5,
       projectileSpeed: 450,
       projectileType: 'shotgun',
       spread: 5,

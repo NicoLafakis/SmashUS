@@ -71,7 +71,7 @@ export class GameOverScene extends Scene {
 
     // Restart prompt
     this.restartPrompt = new PIXI.Text(
-      this.isVictory ? 'Click to Play Again' : 'Click to Restart',
+      this.isVictory ? 'Tap or Click to Play Again' : 'Tap or Click to Restart',
       {
         fontFamily: 'Arial',
         fontSize: 28,

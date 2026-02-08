@@ -434,6 +434,13 @@ export class ShopScene extends Scene {
       tab.addChild(text)
 
       this.categoryTabs.push(tab)
+      tab.eventMode = 'static'
+      tab.cursor = 'pointer'
+      tab.on('pointertap', () => {
+        this.selectedCategory = i
+        this.updateCategory()
+        playSound('menu_select')
+      })
       tabContainer.addChild(tab)
     })
 
@@ -517,7 +524,7 @@ export class ShopScene extends Scene {
     this.itemDescriptionPanel.addChild(cost)
 
     // Buy prompt
-    const buyPrompt = new PIXI.Text('[SPACE] to Purchase', {
+    const buyPrompt = new PIXI.Text('Tap or [SPACE] to Purchase', {
       fontFamily: 'Arial',
       fontSize: 12,
       fill: SHOP_COLORS.textGray,
@@ -526,6 +533,18 @@ export class ShopScene extends Scene {
     buyPrompt.x = 15
     buyPrompt.y = 175
     this.itemDescriptionPanel.addChild(buyPrompt)
+
+    // Tap-to-buy area
+    const buyArea = new PIXI.Graphics()
+    buyArea.beginFill(0x000000, 0.01) // Nearly invisible hit area
+    buyArea.drawRoundedRect(0, 160, 260, 40, 4)
+    buyArea.endFill()
+    buyArea.eventMode = 'static'
+    buyArea.cursor = 'pointer'
+    buyArea.on('pointertap', () => {
+      this.attemptPurchase()
+    })
+    this.itemDescriptionPanel.addChild(buyArea)
 
     this.container.addChild(this.itemDescriptionPanel)
   }
@@ -540,7 +559,7 @@ export class ShopScene extends Scene {
 
   private createControlsHint(): void {
     const hint = new PIXI.Text(
-      '[A/D] Category   [W/S] Item   [SPACE] Buy   [ENTER] Continue',
+      'Tap items to browse  |  [ENTER] or tap below to Continue',
       {
         fontFamily: 'Arial',
         fontSize: 14,
@@ -551,6 +570,33 @@ export class ShopScene extends Scene {
     hint.x = GAME_WIDTH / 2
     hint.y = GAME_HEIGHT - 10
     this.container.addChild(hint)
+
+    // Touch-friendly continue button
+    const continueBtn = new PIXI.Container()
+    continueBtn.x = GAME_WIDTH / 2 - 80
+    continueBtn.y = GAME_HEIGHT - 55
+    const btnBg = new PIXI.Graphics()
+    btnBg.beginFill(0x336633)
+    btnBg.lineStyle(2, 0x44ff44)
+    btnBg.drawRoundedRect(0, 0, 160, 36, 6)
+    btnBg.endFill()
+    continueBtn.addChild(btnBg)
+    const btnText = new PIXI.Text('CONTINUE >>', {
+      fontFamily: 'Arial',
+      fontSize: 16,
+      fontWeight: 'bold',
+      fill: '#44ff44',
+    })
+    btnText.anchor.set(0.5)
+    btnText.x = 80
+    btnText.y = 18
+    continueBtn.addChild(btnText)
+    continueBtn.eventMode = 'static'
+    continueBtn.cursor = 'pointer'
+    continueBtn.on('pointertap', () => {
+      this.continueToLevel()
+    })
+    this.container.addChild(continueBtn)
   }
 
   // ============================================
@@ -617,6 +663,14 @@ export class ShopScene extends Scene {
     bg.drawRoundedRect(0, 0, 200, 40, 4)
     bg.endFill()
     card.addChild(bg)
+    card.eventMode = 'static'
+    card.cursor = 'pointer'
+    card.on('pointertap', () => {
+      this.selectedItem = index
+      this.rebuildItemList()
+      this.updateItemDescription()
+      playSound('menu_select')
+    })
 
     // Icon
     const icon = new PIXI.Text(item.icon, {
@@ -721,7 +775,7 @@ export class ShopScene extends Scene {
       buyPrompt.text = 'Not enough money!'
       buyPrompt.style.fill = SHOP_COLORS.textRed
     } else {
-      buyPrompt.text = '[SPACE] to Purchase'
+      buyPrompt.text = 'Tap or [SPACE] to Purchase'
       buyPrompt.style.fill = SHOP_COLORS.textGreen
     }
   }

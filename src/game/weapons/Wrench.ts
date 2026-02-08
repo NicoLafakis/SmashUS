@@ -4,8 +4,8 @@ export class Wrench extends Weapon {
   constructor() {
     const stats: WeaponStats = {
       name: 'Wrench',
-      damage: 10,
-      fireRate: 3,
+      damage: 12,
+      fireRate: 4,
       projectileSpeed: 400,
       projectileType: 'wrench',
       spread: 1,

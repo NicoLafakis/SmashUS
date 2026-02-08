@@ -36,10 +36,10 @@ export abstract class Weapon {
     return this.cooldown <= 0
   }
 
-  fire(): ProjectileConfig[] | null {
+  fire(fireRateMultiplier: number = 1): ProjectileConfig[] | null {
     if (!this.canFire()) return null
 
-    this.cooldown = 1 / this.stats.fireRate
+    this.cooldown = 1 / (this.stats.fireRate * fireRateMultiplier)
 
     const projectiles: ProjectileConfig[] = []
 
