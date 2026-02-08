@@ -47,12 +47,23 @@ import {
 } from '../systems/AudioManager'
 import { playMusic } from '../systems/MusicManager'
 import { LevelBackground } from '../systems/LevelBackground'
+import { crtGlitch } from '../systems/PostProcessing'
 
 const CONTACT_DAMAGE = 10
 const ROOM_CLEAR_BONUS = 500
 const NO_DAMAGE_BONUS = 1000
 const BOSS_CLEAR_BONUS = 2000
 const DROP_CHANCE = 0.65 // 65% chance to drop a pickup
+
+// Projectile type → trail particle preset
+const TRAIL_MAP: Record<string, string> = {
+  laser: 'trail_laser',
+  shotgun: 'trail_shotgun',
+  rapidfire: 'trail_rapidfire',
+  spread: 'trail_spread',
+  wrench: 'bullet_trail',
+  pistol: 'bullet_trail',
+}
 
 export class GameScene extends Scene {
   private player!: Player
@@ -510,10 +521,15 @@ export class GameScene extends Scene {
       }
     }
 
-    // Update projectiles
+    // Update projectiles (with trails)
     for (const proj of this.projectiles) {
       if (proj.active) {
         proj.update(dt)
+        // Emit trail particles for visual flair
+        const trailPreset = proj.isPlayerProjectile
+          ? (TRAIL_MAP[proj.type] || 'bullet_trail')
+          : 'trail_enemy'
+        emitParticles(proj.x, proj.y, trailPreset)
       }
     }
 
@@ -810,7 +826,7 @@ export class GameScene extends Scene {
       const projBounds = proj.getBounds()
 
       for (const enemy of this.room.getAliveEnemies()) {
-        if (!enemy.active) continue
+        if (!enemy.active || enemy.dying) continue
         if (proj.hasHit(enemy.id)) continue
 
         const enemyBounds = enemy.getBounds()
@@ -872,6 +888,7 @@ export class GameScene extends Scene {
             playNoise(0.4, 0.5)
             cameraShake(20, 0.5)
             cameraFlash(0xffffff, 0.3, 0.6)
+            crtGlitch(0.5, 0.6)
           }
         }
       }
@@ -924,7 +941,7 @@ export class GameScene extends Scene {
 
     // Player vs enemies (contact damage)
     for (const enemy of this.room.getAliveEnemies()) {
-      if (!enemy.active) continue
+      if (!enemy.active || enemy.dying) continue
 
       const enemyBounds = enemy.getBounds()
 
@@ -1182,6 +1199,7 @@ export class GameScene extends Scene {
     // Room clear effects
     if (this.isBossRoom) {
       playSound('level_complete')
+      crtGlitch(0.4, 0.5)
       // Celebration particles across the screen
       for (let i = 0; i < 5; i++) {
         const x = 200 + Math.random() * (GAME_WIDTH - 400)
@@ -1190,6 +1208,7 @@ export class GameScene extends Scene {
       }
     } else {
       playSound('room_clear')
+      crtGlitch(0.15, 0.25)
       emitParticles(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'room_clear')
     }
 
@@ -1275,6 +1294,7 @@ export class GameScene extends Scene {
     emitParticles(this.player.x, this.player.y, 'explosion')
     cameraShake(15, 0.4)
     cameraFlash(0xff0000, 0.3, 0.5)
+    crtGlitch(0.6, 0.5)
 
     if (this.player.lives <= 0) {
       this.game.sceneManager.switchTo('gameover', { score: this.player.score })

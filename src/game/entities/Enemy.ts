@@ -1,4 +1,4 @@
-import { Entity } from './Entity'
+import { Entity, SPRITE_SCALE } from './Entity'
 import { Player } from './Player'
 import { GAME_WIDTH, GAME_HEIGHT } from '../Game'
 import { SpriteGenerator } from '../utils/SpriteGenerator'
@@ -80,6 +80,9 @@ export class Enemy extends Entity {
   private fleeDirection: number = 0
   public wantsToShoot: boolean = false
   public aimAngle: number = 0
+  public dying: boolean = false
+  private deathTimer: number = 0
+  private readonly DEATH_DURATION: number = 0.25
 
   constructor(config: EnemyConfig, x: number, y: number) {
     super(SpriteGenerator.generateEnemySprite(config.type), 32, 32)
@@ -91,6 +94,25 @@ export class Enemy extends Entity {
   }
 
   update(dt: number): void {
+    // Death animation
+    if (this.dying) {
+      this.deathTimer += dt
+      const progress = Math.min(1, this.deathTimer / this.DEATH_DURATION)
+      // Scale up + fade out
+      const scale = SPRITE_SCALE * (1 + progress * 0.5)
+      this.sprite.scale.set(
+        Math.sign(this.sprite.scale.x) * scale,
+        scale
+      )
+      this.sprite.alpha = 1 - progress
+      this.sprite.tint = 0xffffff
+      if (progress >= 1) {
+        this.active = false
+      }
+      this.updateSprite()
+      return
+    }
+
     // Attack cooldown
     if (this.attackTimer > 0) {
       this.attackTimer -= dt
@@ -234,7 +256,9 @@ export class Enemy extends Entity {
     }, 100)
 
     if (this.health <= 0) {
-      this.active = false
+      this.dying = true
+      this.deathTimer = 0
+      this.sprite.tint = 0xffffff
       return true
     }
     return false

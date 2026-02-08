@@ -7,6 +7,7 @@ import { GameScene } from './scenes/GameScene'
 import { GameOverScene } from './scenes/GameOverScene'
 import { ShopScene } from './scenes/ShopScene'
 import { AssetLoader } from './utils/AssetLoader'
+import { CRTFilter, initCRT } from './systems/PostProcessing'
 
 export const GAME_WIDTH = 1280
 export const GAME_HEIGHT = 720
@@ -16,6 +17,7 @@ export class Game {
   public input: InputManager
   public sceneManager: SceneManager
   public assetLoader: AssetLoader
+  public crt: CRTFilter
   private gameLoop: GameLoop
   private container: HTMLElement
 
@@ -47,6 +49,11 @@ export class Game {
     this.input = new InputManager(this.app.view as HTMLCanvasElement)
     // Add touch joystick overlay to stage (renders above everything)
     this.app.stage.addChild(this.input.container)
+
+    // CRT post-processing filter (arcade cabinet look)
+    this.crt = initCRT()
+    this.crt.setResolution(GAME_WIDTH, GAME_HEIGHT)
+    this.app.stage.filters = [this.crt]
 
     this.sceneManager = new SceneManager(this)
     this.gameLoop = new GameLoop(this)
@@ -89,6 +96,7 @@ export class Game {
   update(dt: number): void {
     this.sceneManager.update(dt)
     this.input.update()
+    this.crt.update(dt)
   }
 
   destroy(): void {
