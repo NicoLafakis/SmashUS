@@ -14,6 +14,7 @@ export interface WeaponStats {
 export abstract class Weapon {
   public stats: WeaponStats
   protected cooldown: number = 0
+  private lastFireRateMultiplier: number = 1
 
   constructor(stats: WeaponStats) {
     this.stats = stats
@@ -39,6 +40,7 @@ export abstract class Weapon {
   fire(fireRateMultiplier: number = 1): ProjectileConfig[] | null {
     if (!this.canFire()) return null
 
+    this.lastFireRateMultiplier = fireRateMultiplier
     this.cooldown = 1 / (this.stats.fireRate * fireRateMultiplier)
 
     const projectiles: ProjectileConfig[] = []
@@ -76,7 +78,7 @@ export abstract class Weapon {
   }
 
   getCooldownProgress(): number {
-    const maxCooldown = 1 / this.stats.fireRate
+    const maxCooldown = 1 / (this.stats.fireRate * this.lastFireRateMultiplier)
     return Math.max(0, this.cooldown / maxCooldown)
   }
 }

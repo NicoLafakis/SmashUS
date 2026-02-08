@@ -105,6 +105,7 @@ export class InputManager {
 
   private onTouchStart = (e: TouchEvent): void => {
     e.preventDefault()
+    // Any tap triggers fireJustPressed for title/game-over screen navigation
     this.touchJustStarted = true
 
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -229,8 +230,6 @@ export class InputManager {
       fireJustPressed = true
     }
 
-    this.updateJoystickVisuals()
-
     return { moveX, moveY, aimX, aimY, fire, fireJustPressed }
   }
 
@@ -250,6 +249,7 @@ export class InputManager {
     this.prevMouseDown = this.mouseDown
     this.prevTouchJustStarted = this.touchJustStarted
     this.touchJustStarted = false
+    this.updateJoystickVisuals()
   }
 
   // --- Joystick visuals ---
