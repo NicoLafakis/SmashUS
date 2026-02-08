@@ -80,6 +80,7 @@ export class GameScene extends Scene {
   private entityLayer!: PIXI.Container
   private projectileLayer!: PIXI.Container
   private uiLayer!: PIXI.Container
+  private worldContainer!: PIXI.Container
 
   private roomTransitionTimer: number = 0
   private isTransitioning: boolean = false
@@ -95,6 +96,8 @@ export class GameScene extends Scene {
   private camera!: Camera
   private particleSystem!: ParticleSystem
   private levelBackground!: LevelBackground
+  private aimLine!: PIXI.Graphics
+  private isMobile: boolean = false
 
   constructor(game: Game) {
     super(game)
@@ -113,20 +116,25 @@ export class GameScene extends Scene {
     }
 
     // Create layer structure
+    this.worldContainer = new PIXI.Container()
     this.backgroundLayer = new PIXI.Container()
     this.hazardLayer = new PIXI.Container()
     this.entityLayer = new PIXI.Container()
     this.projectileLayer = new PIXI.Container()
     this.uiLayer = new PIXI.Container()
 
-    this.container.addChild(this.backgroundLayer)
-    this.container.addChild(this.hazardLayer)
-    this.container.addChild(this.entityLayer)
-    this.container.addChild(this.projectileLayer)
+    this.worldContainer.addChild(this.backgroundLayer)
+    this.worldContainer.addChild(this.hazardLayer)
+    this.worldContainer.addChild(this.entityLayer)
+    this.worldContainer.addChild(this.projectileLayer)
+    this.container.addChild(this.worldContainer)
     this.container.addChild(this.uiLayer)
 
-    // Initialize effects systems
-    this.camera = initCamera(this.container)
+    // Detect mobile for zoom/aim features
+    this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+
+    // Initialize effects systems (camera zooms world, not UI)
+    this.camera = initCamera(this.worldContainer)
     this.particleSystem = initParticleSystem(this.projectileLayer)
     this.levelBackground = new LevelBackground()
     this.backgroundLayer.addChild(this.levelBackground.getGraphics())
@@ -166,6 +174,19 @@ export class GameScene extends Scene {
 
     // Boss health bar (hidden initially)
     this.createBossHealthBar()
+
+    // Aim direction indicator (visible during touch aiming)
+    this.aimLine = new PIXI.Graphics()
+    this.aimLine.visible = false
+    this.entityLayer.addChild(this.aimLine)
+
+    // Mobile: zoom in and follow player for better visibility
+    if (this.isMobile) {
+      this.camera.setZoom(1.4, true)
+      this.camera.setTarget(this.player)
+      this.camera.setFollowParams(8, 30)
+      this.camera.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    }
 
     // Pause overlay (hidden initially)
     this.createPauseOverlay()
@@ -428,6 +449,26 @@ export class GameScene extends Scene {
         input.aimY
       )
       this.fireWeapon(angle)
+    }
+
+    // Draw aim direction indicator (touch only)
+    this.aimLine.clear()
+    if (input.fire && this.isMobile) {
+      const angle = angleBetween(this.player.x, this.player.y, input.aimX, input.aimY)
+      const lineLen = 80
+      const endX = this.player.x + Math.cos(angle) * lineLen
+      const endY = this.player.y + Math.sin(angle) * lineLen
+      this.aimLine.visible = true
+      this.aimLine.lineStyle(2, 0xffff44, 0.7)
+      this.aimLine.moveTo(this.player.x + Math.cos(angle) * 30, this.player.y + Math.sin(angle) * 30)
+      this.aimLine.lineTo(endX, endY)
+      // Crosshair dot at end
+      this.aimLine.lineStyle(0)
+      this.aimLine.beginFill(0xffff44, 0.8)
+      this.aimLine.drawCircle(endX, endY, 4)
+      this.aimLine.endFill()
+    } else {
+      this.aimLine.visible = false
     }
 
     // Update room (spawn waves for non-boss rooms)
